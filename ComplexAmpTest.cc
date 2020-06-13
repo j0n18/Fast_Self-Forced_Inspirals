@@ -209,6 +209,16 @@ inFile.close();
         output << endl;
 
     }
+	
+// close file
+output.close();
+
+// free memory to prevent memory leaks in future applications
+for(iter = 0; iter < col_count-2; iter++)
+	{
+	delete N_Interp_re[iter];
+	delete N_Interp_im[iter];
+	}
 
     // --------------------------- End ----------------------------------------- //
 

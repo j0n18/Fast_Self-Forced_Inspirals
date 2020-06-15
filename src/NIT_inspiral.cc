@@ -17,6 +17,31 @@
 #include <NIT_inspiral.h>
 #include <libconfig.h++>
 
+#include <gsl/gsl_errno.h>
+#include <gsl/gsl_sf_ellint.h>
+#include <gsl/gsl_roots.h>
+#include <gsl/gsl_min.h>
+#include <math.h>
+#include <iomanip>
+
+#define Sin(x)          (sin((double)(x)))
+#define Cos(x)          (cos((double)(x)))
+#define Power(x, y)     (pow((double)(x), (double)(y)))
+#define Sqrt(x)         (sqrt((double)(x)))
+#define Pi				M_PI
+#define Conjugate(x)	(conj(x))
+
+#define CHI_MAX 1000000.0
+
+// precision of output
+#define OUT_PREC 12
+
+// numerical tolerance for ODE integrations
+#define NUM_TOL 1.0e-10
+
+// smallest value for p-2*e-6
+#define Y_MIN 0.1
+
 using namespace libconfig;
 
 void compute_waveform(string insp_filename, string out_filename);
@@ -34,12 +59,15 @@ int main(int argc, char* argv[]){
 		if( !strcmp(argv[1], "-f") ){
 			mode = FULL_INSPIRAL;
 			cout << "# Mode: inspiral using full EoM" << endl;
-		} else if( !strcmp(argv[1], "-n0") ){
-			mode = NIT_INSPIRAL_DEFAULT;
-			cout << "# Mode: inspiral using default NIT EoM" << endl;
+		} else if( !strcmp(argv[1], "-f0") ){
+			mode = FULL_INSPIRAL_DEFAULT;
+			cout << "# Mode: inspiral using default full EoM" << endl;
 		} else if( !strcmp(argv[1], "-n") ){
 			mode = NIT_INSPIRAL;
 			cout << "# Mode: inspiral using NIT EoM" << endl;
+		} else if( !strcmp(argv[1], "-n0") ){
+			mode = NIT_INSPIRAL_DEFAULT;
+			cout << "# Mode: inspiral using default NIT EoM" << endl;
 		} else if( !strcmp(argv[1], "-d") ){
 			mode = DECOMPOSE;
 			cout << "# Mode: decompose the self-force data to compute the F's and f's in NIT EoM" << endl;
@@ -68,7 +96,7 @@ int main(int argc, char* argv[]){
 		}else{
 			cout << "Unrecognized flag. Run with no arguments for instructions." << endl;
 		}
-		if(mode == FULL_INSPIRAL || mode == NIT_INSPIRAL || mode == NIT_INSPIRAL_DEFAULT){
+		if(mode == FULL_INSPIRAL || mode == FULL_INSPIRAL_DEFAULT || mode == NIT_INSPIRAL || mode == NIT_INSPIRAL_DEFAULT){
 			if(argc == 5){
 				p0 = atof(argv[2]);
 				e0 = atof(argv[3]);	
@@ -80,10 +108,11 @@ int main(int argc, char* argv[]){
 		}
 	}else{
 		cout << "Necessary parameters:" << endl;
-		cout << "\t1. flag      '-f', '-n', 'w', '-d' or '-c' " << endl;
+		cout << "\t1. flag      '-f', '-f0', '-n', '-n0', '-w', '-d' or '-c' " << endl;
 		cout << "\t   '-f'      Full inspiral" << endl;
-		cout << "\t   '-n0'     Default NIT inspiral" << endl;
+		cout << "\t   '-f0'     Default Full inspiral" << endl;
 		cout << "\t   '-n'      NIT inspiral" << endl;
+		cout << "\t   '-n0'     Default NIT inspiral" << endl;
 		cout << "\t   '-w'      Compute the waveform" << endl;
 		cout << "\t   '-d'      Decompose the self-force data into Fourier modes" << endl;
 		cout << "\t   '-c'      Compute F's and f's in NIT EoM" << endl;
@@ -117,9 +146,9 @@ int main(int argc, char* argv[]){
 	// Disable the GSL error handler (only for production version of code)
 	// gsl_set_error_handler_off();
 	
-	// Output all the data at 10 digits of precision using scientific notation
-	fout.precision(10);
-	cout.precision(10);
+	// Output all the data at specified digits of precision using scientific notation
+	fout.precision(OUT_PREC);
+	cout.precision(OUT_PREC);
 	fout << scientific;
 	cout << scientific;
 	
@@ -133,6 +162,16 @@ int main(int argc, char* argv[]){
 		fout.open(filename.str());
 		fout << "# Full Inspiral" << endl;
 		integrate_osc_eqs(p0, e0);	
+			
+	}else if(mode == FULL_INSPIRAL_DEFAULT){
+		
+		ostringstream filename;
+		filename << "output/Inspiral_Full_p" << p0 << "_e" << e0 << "_q" << q <<".dat";
+		cout << "Outputting inspiral trajectory to " << filename.str() << endl;	
+		
+		fout.open(filename.str());
+		fout << "# Full Inspiral" << endl;
+		integrate_osc_eqs_default(p0, e0);
 			
 	}else if(mode == NIT_INSPIRAL_DEFAULT){
 		
@@ -197,16 +236,15 @@ int NIT_EoM (double v, const double y[], double f[], void *params){
 	
 	struct interp_params *interps = (struct interp_params *)params;
 
-	double p = y[0];
-	double e = y[1];
+	// p = y[0],  e = y[1]
 
-	f[0] = q*interps->Fp1->eval(p-2*e, e) + q*q*interps->Fp2->eval(p-2*e, e);
-	f[1] = q*interps->Fe1->eval(p-2*e, e) + q*q*interps->Fe2->eval(p-2*e, e);
-	f[2] = 1.0 + q*interps->fv1->eval(p-2*e, e);
-	f[3] = T_r(p, e)/(2.0*M_PI) + q*interps->U1->eval(p-2*e, e);
-	f[4] = Phi(p, e)/(2.0*M_PI) + q*interps->V1->eval(p-2*e, e);
+	f[0] = q*interps->Fp1->eval(y[0]-2*y[1], y[1]) + q*q*interps->Fp2->eval(y[0]-2*y[1], y[1]);
+	f[1] = q*interps->Fe1->eval(y[0]-2*y[1], y[1]) + q*q*interps->Fe2->eval(y[0]-2*y[1], y[1]);
+	f[2] = 1.0 + q*interps->fv1->eval(y[0]-2*y[1], y[1]);
+	f[3] = T_r(y[0], y[1])/(2.0*M_PI) + q*interps->U1->eval(y[0]-2*y[1], y[1]);
+	f[4] = Phi(y[0], y[1])/(2.0*M_PI) + q*interps->V1->eval(y[0]-2*y[1], y[1]);
 	
-	if(p-6-2*e > 0.1) return GSL_SUCCESS;
+	if(y[0]-6-2*y[1] > Y_MIN) return GSL_SUCCESS;
 	else return GSL_SUCCESS + 1;
 }
 
@@ -294,7 +332,7 @@ void interpolate_Fs_and_integrate_NIT_EoM(int mode, double p0, double e0){
 		double delta_chi = 2.0*M_PI/n_per_orbit;
 	
 	    gsl_odeiv2_system sys 	= {NIT_EoM, NULL, 5, &interps};	
-	    gsl_odeiv2_driver *d 	= gsl_odeiv2_driver_alloc_y_new (&sys, gsl_odeiv2_step_rk8pd, 1e-10, 1e-10, 0.0);
+	    gsl_odeiv2_driver *d 	= gsl_odeiv2_driver_alloc_y_new (&sys, gsl_odeiv2_step_rk8pd, NUM_TOL, NUM_TOL, 0.0);
 	
 	    high_resolution_clock::time_point t1 = high_resolution_clock::now();
 	
@@ -320,12 +358,12 @@ void interpolate_Fs_and_integrate_NIT_EoM(int mode, double p0, double e0){
 	    const gsl_odeiv2_step_type * T = gsl_odeiv2_step_rk8pd;
 
 	    gsl_odeiv2_step *s 		= gsl_odeiv2_step_alloc (T, 5);
-	    gsl_odeiv2_control *c 	= gsl_odeiv2_control_y_new (1e-10, 1e-10);
+	    gsl_odeiv2_control *c 	= gsl_odeiv2_control_y_new (NUM_TOL, NUM_TOL);
 	    gsl_odeiv2_evolve *e 	= gsl_odeiv2_evolve_alloc (5);
 
 	    gsl_odeiv2_system sys = {NIT_EoM, NULL, 5, &interps};
 
-	    double chi_max = 1000000000.0;	//FIXME make this something like 100/q
+	    double chi_max = CHI_MAX;	//FIXME make this something like 100/q
 	    double h = 1e-1;
 
 	    high_resolution_clock::time_point t1 = high_resolution_clock::now();
@@ -341,7 +379,7 @@ void interpolate_Fs_and_integrate_NIT_EoM(int mode, double p0, double e0){
 			fout << chi << " " << y1[0] << " " << y1[1] << " " << y1[2] << " " << y1[3] << " " << y1[4] << " " << endl;
 			
 			// Stop output of lots of data near the separatrix when the time step gets very small
-			if(fabs(chi_prev/chi - 1.0) < 1e-9) break;
+			if(fabs(chi_prev/chi - 1.0) < NUM_TOL) break;
 			
 		    chi_prev = chi;	
 	      }
@@ -636,7 +674,7 @@ void construct_tilde_Fs(){
 	
 	// The output file for the Ftilde data
 	ofstream Ftilde_file("data/Ftildes.dat");
-	Ftilde_file.precision(10);
+	Ftilde_file.precision(OUT_PREC);
 	
 	string fv_string, Fp_string, Fe_string, dFpdp_string, dFpde_string, dFedp_string, dFede_string;
 	string dU0dp_string, dU0de_string, dU0dv_string, dV0dp_string, dV0de_string, dV0dv_string;
@@ -755,6 +793,7 @@ void construct_tilde_Fs(){
 // Code for explicit integration of the {p, e, v, t, phi} equations using the full self-force
 
 int osc_eqs (double chi, const double y[], double f[], void *params){
+	
 	double p = y[0];
 	double e = y[1];
 	double chi0 = y[2];
@@ -769,7 +808,7 @@ int osc_eqs (double chi, const double y[], double f[], void *params){
 	f[3] = dt_dchi(p, e, v);
 	f[4] = dphi_dchi(p, e, v);	
 	
-	if(p-6-2*e > 0.1) return GSL_SUCCESS;
+	if(p-6-2*e > Y_MIN) return GSL_SUCCESS;
 	else return GSL_SUCCESS + 1;
 }
 
@@ -803,7 +842,7 @@ void integrate_osc_eqs(double p0, double e0){
 	 	}
 		
 	    gsl_odeiv2_system sys 	= {osc_eqs, NULL, 5, NULL};	
-	    gsl_odeiv2_driver *d 	= gsl_odeiv2_driver_alloc_y_new (&sys, gsl_odeiv2_step_rk8pd, 1e-10, 1e-10, 0.0);
+	    gsl_odeiv2_driver *d 	= gsl_odeiv2_driver_alloc_y_new (&sys, gsl_odeiv2_step_rk8pd, NUM_TOL, NUM_TOL, 0.0);
 		
 		double chi_i = 0;
 		double delta_chi = 2.0*M_PI/n_per_orbit;
@@ -826,13 +865,13 @@ void integrate_osc_eqs(double p0, double e0){
 	    const gsl_odeiv2_step_type * T = gsl_odeiv2_step_rk8pd;
 
 	    gsl_odeiv2_step *s 		= gsl_odeiv2_step_alloc (T, 5);
-	    gsl_odeiv2_control *c 	= gsl_odeiv2_control_y_new (1e-10, 1e-10);
+	    gsl_odeiv2_control *c 	= gsl_odeiv2_control_y_new (NUM_TOL, NUM_TOL);
 	    gsl_odeiv2_evolve *e 	= gsl_odeiv2_evolve_alloc (5);
 
 	    gsl_odeiv2_system sys = {osc_eqs, NULL, 5, NULL};
 
-	    double chi_max = 1000000000.0;	//FIXME make this something like 100/q
-	    double h = 1e-6;
+	    double chi_max = CHI_MAX;
+		double h = 1e-6;
 
 	    high_resolution_clock::time_point t1 = high_resolution_clock::now();
 
@@ -857,6 +896,220 @@ void integrate_osc_eqs(double p0, double e0){
 		  gsl_odeiv2_control_free (c);
 		  gsl_odeiv2_step_free (s);
 	}
+	
+}
+//-------------------------------------------------------------
+//  -f0 additions for full self-force with high eccentricity
+//-------------------------------------------------------------
+
+// interpolants for each self-force component (global variables)
+vector<Interpolant*> F_interp_cos[3], F_interp_sin[3];
+
+double insp_at(double chi, double e, double p){
+return -(sqrt(-4*e*e+(-2+p)*(-2+p))*(3+e*e-p)*(6+2*e*e-p)*p*pow(1+e*cos(chi),2)*(2-p+2*e*cos(chi)));}
+
+double insp_aphi(double chi, double e, double p){
+return (1-e*e)*(4*e*e+(-6+p)*(-2+p))*(3+e*e-p)*p*p*sqrt(p);}
+
+double insp_bt(double chi, double e, double p){
+return -2*e*sqrt(-4*e*e+(-2+p)*(-2+p))*(-3-e*e+p)*(-2+p-2*e*cos(chi))*p*p*pow(1+e*cos(chi),2);}
+
+double insp_bphi(double chi, double e, double p){
+return 2*e*(-4+p)*(-4+p)*p*p*p*sqrt(p)*(-3-e*e+p);}
+
+double insp_q(double chi, double e, double p){
+return e*(-6-2*e+p)*(-6+2*e+p)*sqrt(-6+p-2*e*cos(chi))*pow(1+e*cos(chi),4);}
+
+double getdpdchi(double e, double p, double v, double Ft, double Fphi){
+return (insp_bt(v,e,p)*Ft+insp_bphi(v,e,p)*Fphi)/insp_q(v,e,p);}
+
+double getdedchi(double e, double p, double v, double Ft, double Fphi){
+return (insp_at(v,e,p)*Ft+insp_aphi(v,e,p)*Fphi)/insp_q(v,e,p);}
+
+double getF(double e, double p, double v, vector<Interpolant*> F_interp_cos, vector<Interpolant*> F_interp_sin){
+double y = p-2*e;
+int n;
+int n_max = F_interp_cos.size()-1;
+double F = F_interp_cos[0]->eval(y,e);
+for(n=1; n<=n_max; n++)	F += F_interp_cos[n]->eval(y,e)*cos(n*v) + F_interp_sin[n]->eval(y,e)*sin(n*v);
+return F;}
+
+int osc_eqs_default(double chi, const double y[], double f[], void *params){
+	double p = y[0];
+	double e = y[1];
+	double chi0 = y[2];
+	double v = chi - chi0;
+	
+	//double Fr 	= q*(lib_Sch_GSF_Fr_diss(e, p, v) + lib_Sch_GSF_Fr_cons(e, p, v));
+	//double Fphi = q*(lib_Sch_GSF_Fphi_diss(e, p, v) + lib_Sch_GSF_Fphi_cons(e, p, v));
+	double Ft = q*getF(e, p, v, F_interp_cos[0], F_interp_sin[0]);
+    double Fr 	= q*getF(e, p, v, F_interp_cos[1], F_interp_sin[1]);
+	double Fphi = q*getF(e, p, v, F_interp_cos[2], F_interp_sin[2]);
+
+	//f[0] = dp_dchi(p, e, v, Fphi, Fr);
+	//f[1] = de_dchi(p, e, v, Fphi, Fr);
+	f[0] = getdpdchi(e, p, v, Ft, Fphi);
+    f[1] = getdedchi(e, p, v, Ft, Fphi);
+	f[2] = dw_dchi(p, e, v, Fphi, Fr);
+	f[3] = dt_dchi(p, e, v);
+	f[4] = dphi_dchi(p, e, v);	
+	
+	if(p-6-2*e > Y_MIN) return GSL_SUCCESS;
+	else return GSL_SUCCESS + 1;
+}
+
+void integrate_osc_eqs_default(double p0, double e0){
+	// import self-force data
+	ifstream inFile;
+	double y_col, e_col;
+	vector<double> ys, es;
+	string input_names[3], line, temp;
+	input_names[0] = "GSF_model_data/Ft.dat";
+	input_names[1] = "GSF_model_data/Fr.dat";
+	input_names[2] = "GSF_model_data/Fphi.dat";
+	complex<double> cos_sin; 
+	int trp, n_max, test, n;
+	int j = 0;
+	for(trp=0;trp<3;trp++)
+		{
+		inFile.open(input_names[trp]);
+		if (!inFile)
+			{
+			cout << "Unable to open file \n";
+			exit(1); // terminate with error
+			}
+		// count the number of columns and advance past 1st row
+		getline(inFile,line);
+		istringstream ss(line);
+		ss >> temp;
+		ss >> temp;
+		while(ss >> test) j++;
+		if(trp==0) n_max = j-1;
+		vector<double> F_data_cos[n_max+1], F_data_sin[n_max+1];
+				
+		// loop through each orbit (rows in data file)
+		while(getline(inFile,line))
+			{
+			istringstream ss(line);
+
+			ss >> y_col;    // extracts 1st col, which is y = p-2e
+			ss >> e_col;    // extracts 2nd col, which is e
+			// assumes the 3 files have the same orbits
+			if(trp==0)
+				{
+				ys.push_back(y_col);
+				es.push_back(e_col);
+				}
+			
+			for(n=0; n<=n_max; n++) // loop through each n (columns in data file)
+				{
+				ss >> cos_sin;
+				// no need for another vector (n_re & n_im)
+				// can access the components of N_re and N_imag directly
+				F_data_cos[n].push_back(cos_sin.real());
+				F_data_sin[n].push_back(cos_sin.imag());
+				}
+			}
+		inFile.close();
+		// interpolate self-force data
+		for(n=0; n<=n_max; n++)
+			{
+			F_interp_cos[trp].push_back(new Interpolant(ys, es, F_data_cos[n]));
+			F_interp_sin[trp].push_back(new Interpolant(ys, es, F_data_sin[n]));
+			}
+		}
+	
+	double chi = 0;
+	
+	// y[0] = p, y[1] = e, y[2] = chi0, y[3] = t, y[4] = phi
+	double y[5] = {p0, e0, 0, 0, 0};
+	
+	// Output the initial parameters
+	fout << "# Format: chi    p    e    chi0    t    phi" << endl;
+	fout << chi << " " << y[0] << " " << y[1] << " " << y[2] << " " << y[3] << " " << y[4] << " " << endl;
+
+
+	int dense_output;
+	try{
+		dense_output 		= cfg.lookup("Dense_output");		
+ 	}catch(const SettingNotFoundException &nfex){
+   		cerr << "'Dense_output' setting missing from configuration file." << endl; exit(0);
+ 	}
+
+	if(dense_output == 1){
+		
+		double n_per_orbit;
+		try{
+			n_per_orbit 		= cfg.lookup("n_per_orbit");		
+	 	}catch(const SettingNotFoundException &nfex){
+	   		cerr << "'n_per_orbit' setting missing from configuration file." << endl; exit(0);
+		}
+	
+	    gsl_odeiv2_system sys 	= {osc_eqs_default, NULL, 5, NULL};	
+	    gsl_odeiv2_driver *d 	= gsl_odeiv2_driver_alloc_y_new (&sys, gsl_odeiv2_step_rk8pd, NUM_TOL, NUM_TOL, 0.0);
+		
+		double chi_i = 0;
+		double delta_chi = 2.0*M_PI/n_per_orbit;
+		
+		while(1){
+			chi_i += delta_chi;
+			int status = gsl_odeiv2_driver_apply (d, &chi, chi_i, y);
+
+			if (status != GSL_SUCCESS){
+				printf ("error, return value=%d\n", status);
+				break;
+			}
+
+			fout << chi << " " << y[0] << " " << y[1] << " " << y[2] << " " << y[3] << " " << y[4] << " " << endl;
+			
+		}
+
+		gsl_odeiv2_driver_free (d);
+	}else{		// Sparse output
+	    const gsl_odeiv2_step_type * T = gsl_odeiv2_step_rk8pd;
+
+	    gsl_odeiv2_step *s 		= gsl_odeiv2_step_alloc (T, 5);
+	    gsl_odeiv2_control *c 	= gsl_odeiv2_control_y_new (NUM_TOL, NUM_TOL);
+	    gsl_odeiv2_evolve *e 	= gsl_odeiv2_evolve_alloc (5);
+
+	    gsl_odeiv2_system sys = {osc_eqs_default, NULL, 5, NULL};
+
+	    double chi_max = CHI_MAX;
+		double h = 1e-6;
+
+	    high_resolution_clock::time_point t1 = high_resolution_clock::now();
+
+	    while (chi < chi_max) {
+	        int status = gsl_odeiv2_evolve_apply (e, c, s, &sys, &chi, chi_max, &h, y);
+			if (status != GSL_SUCCESS){
+				//printf ("error, return value=%d\n", status);
+				break;
+			}
+
+			fout << chi << " " << y[0] << " " << y[1] << " " << y[2] << " " << y[3] << " " << y[4] << " " << endl;
+			
+	      }
+		  high_resolution_clock::time_point t2 = high_resolution_clock::now();
+		  
+		  duration<double> time_span = duration_cast<duration<double>>(t2 - t1);
+		  fout << "# Computing the inspiral took: " << time_span.count() << " seconds." << endl;
+		  
+		  
+		  
+		  gsl_odeiv2_evolve_free (e);
+		  gsl_odeiv2_control_free (c);
+		  gsl_odeiv2_step_free (s);
+	}
+	
+	// free memory from interpolants
+	for(trp=0; trp<3; trp++)
+		{
+		for(n=0; n<=n_max; n++)
+			{
+			delete F_interp_cos[trp][n];
+			delete F_interp_sin[trp][n];
+			}
+		}
 	
 }
 

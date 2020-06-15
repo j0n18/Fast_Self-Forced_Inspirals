@@ -48,12 +48,13 @@ extern "C" {
 
 // Used to set the mode the code runs in
 #define FULL_INSPIRAL  			0
-#define NIT_INSPIRAL_DEFAULT	1
+#define FULL_INSPIRAL_DEFAULT	1
 #define NIT_INSPIRAL   			2
-#define DECOMPOSE      			3
-#define CONSTRUCT_Fs   			4
-#define WAVEFORM_FULL  			5
-#define WAVEFORM_NIT   			6
+#define NIT_INSPIRAL_DEFAULT	3
+#define DECOMPOSE      			4
+#define CONSTRUCT_Fs   			5
+#define WAVEFORM_FULL  			6
+#define WAVEFORM_NIT   			7
 
 // Functions for computing the RHS of the NIT EoM
 void FFT_self_force_over_parameter_space();
@@ -63,6 +64,8 @@ void construct_tilde_Fs();
 // Fuctions for integrating the full EoM
 void integrate_osc_eqs(double p0, double e0);
 void integrate_osc_eqs_implicit(double p0, double e0);
+
+void integrate_osc_eqs_default(double p0, double e0);
 
 // Function for integrating the NIT EoM
 void interpolate_Fs_and_integrate_NIT_EoM(int mode, double p0, double e0);

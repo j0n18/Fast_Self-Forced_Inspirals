@@ -24,6 +24,15 @@
 #include <math.h>
 #include <iomanip>
 
+// ComplexAmpTest include statements:
+#include <fstream>
+#include <iostream>
+#include <complex>
+ // #include <iomanip>
+#include <algorithm>
+ // #include "Interpolant.h"
+
+
 #define Sin(x)          (sin((double)(x)))
 #define Cos(x)          (cos((double)(x)))
 #define Power(x, y)     (pow((double)(x), (double)(y)))
@@ -46,6 +55,7 @@ using namespace libconfig;
 
 void compute_waveform(string insp_filename, string out_filename);
 Complex waveform_h(double p, double e, double v, double phi, double Z, double Phi);
+Complex waveform_T(double Ar,double Ai, double v, double phi,double w_phi, double w_r,double t, double tt, double m, double n);
 
 int mode;				// Selects the behavior of the code. Set to either FUll_INSPIRAL, NIT_INSPIRAL, DECOMPOSE or CONSTRUCT_Fs
 double q;				// The mass ratio q = m_1/m_2
@@ -74,7 +84,11 @@ int main(int argc, char* argv[]){
 		}else if( !strcmp(argv[1], "-c") ){
 			mode = CONSTRUCT_Fs;
 			cout << "# Mode: Compute the F's and f's in the NIT EoM" << endl;
-		}else if( !strcmp(argv[1], "-w") ){
+		}
+		
+		
+		
+		else if( !strcmp(argv[1], "-w") ){
 			if(argc == 6){
 				p0 = atof(argv[2]);
 				e0 = atof(argv[3]);	
@@ -93,7 +107,30 @@ int main(int argc, char* argv[]){
 				cout << "For the waveform mode please enter initial p, e and q values and a '-f' or '-n' flag for Full or NIT." << endl;
 				exit(0);
 			}
-		}else{
+		}
+		// Teukolsky waveform
+				else if( !strcmp(argv[1], "-t") ){
+			if(argc == 6){
+				p0 = atof(argv[2]);
+				e0 = atof(argv[3]);	
+				q  = atof(argv[4]);
+				if( !strcmp(argv[5], "-n") ){
+					mode = T_WAVEFORM_NIT; 
+					cout << "Compute the NIT Teukolsky waveform" << endl;
+				}else if( !strcmp(argv[5], "-f") ){
+					 mode = T_WAVEFORM_FULL;
+					 cout << "Compute the Full Teukolsky waveform" << endl;
+				}else{
+					cout << "Unrecognized waveform flag" << endl;
+					exit(0);
+				}
+			}else{
+				cout << "For the waveform mode please enter initial p, e and q values and a '-f' or '-n' flag for Full or NIT." << endl;
+				exit(0);
+			}
+		}
+		
+		else{
 			cout << "Unrecognized flag. Run with no arguments for instructions." << endl;
 		}
 		if(mode == FULL_INSPIRAL || mode == FULL_INSPIRAL_DEFAULT || mode == NIT_INSPIRAL || mode == NIT_INSPIRAL_DEFAULT){
@@ -113,7 +150,8 @@ int main(int argc, char* argv[]){
 		cout << "\t   '-f0'     Default Full inspiral" << endl;
 		cout << "\t   '-n'      NIT inspiral" << endl;
 		cout << "\t   '-n0'     Default NIT inspiral" << endl;
-		cout << "\t   '-w'      Compute the waveform" << endl;
+		cout << "\t   '-w'      Compute the kludge waveform" << endl;
+		cout << "\t   '-t'      Compute the Teukolsky waveform" << endl;
 		cout << "\t   '-d'      Decompose the self-force data into Fourier modes" << endl;
 		cout << "\t   '-c'      Compute F's and f's in NIT EoM" << endl;
 		cout << "\t2. p         Initial semi-latus rectum for '-f' or '-n' inspiral options" << endl;
@@ -206,6 +244,20 @@ int main(int argc, char* argv[]){
 		out_filename << "output/Waveform_Full_p" << p0 << "_e" << e0 << "_q" << q <<".dat";
 		insp_filename << "output/Inspiral_Full_p" << p0 << "_e" << e0 << "_q" << q <<".dat";
 		compute_waveform(insp_filename.str(), out_filename.str());
+			
+	}else if(mode == T_WAVEFORM_NIT){
+		
+		ostringstream out_filename, insp_filename;
+		out_filename << "output/T_Waveform_NIT_p" << p0 << "_e" << e0 << "_q" << q <<".dat";
+		insp_filename << "output/Inspiral_NIT_p" << p0 << "_e" << e0 << "_q" << q <<".dat";
+		compute_waveform(insp_filename.str(), out_filename.str()); //should include Teukolsky waveform function
+			
+	}else if(mode == T_WAVEFORM_FULL){
+		
+		ostringstream out_filename, insp_filename;
+		out_filename << "output/T_Waveform_Full_p" << p0 << "_e" << e0 << "_q" << q <<".dat";
+		insp_filename << "output/Inspiral_Full_p" << p0 << "_e" << e0 << "_q" << q <<".dat";
+		compute_waveform(insp_filename.str(), out_filename.str()); //should include Teukolsky waveform function
 			
 	}else if(mode == DECOMPOSE){
 		FFT_self_force_over_parameter_space();
@@ -1118,7 +1170,7 @@ void integrate_osc_eqs_default(double p0, double e0){
 
 void compute_waveform(string insp_filename, string out_filename){
 
-	// Check if the assocaited inspiral trajectory file exists
+	// Check if the associated inspiral trajectory file exists
 	ifstream insp(insp_filename);
 	if(!insp){
 		cout << "Inspiral file: " << insp_filename << " does not exist." << endl;
@@ -1205,7 +1257,7 @@ void compute_waveform(string insp_filename, string out_filename){
 		v = v_interp.eval(chi);
 			
 		chi_dense.push_back(chi);
-		if(mode == WAVEFORM_NIT) t = t_interp.eval(chi) - U0(p,e,v);
+		if(mode == WAVEFORM_NIT || mode == T_WAVEFORM_NIT) t = t_interp.eval(chi) - U0(p,e,v);
 		else t = t_interp.eval(chi);
 		
 		t_dense.push_back(t);
@@ -1220,23 +1272,129 @@ void compute_waveform(string insp_filename, string out_filename){
 
 	duration<double> time_span = duration_cast<duration<double>>(t2 - t1);
 	fout << "# Resampling t took: " << time_span.count() << " seconds." << endl;
-	fout << "# Format: t h+ h×" << endl;
 
-    t1 = high_resolution_clock::now();
+	if(mode == WAVEFORM_NIT){
+		fout << "# Format: t h+ h×" << endl;
+	} else if (mode == T_WAVEFORM_NIT){
+		fout << "# Format: t Re(HTeuk) Im(HTeuk)" << endl;
+	}
 	
-	Complex h;
-	vector<double> hplus, hcross;
+
+    
+
+
+	// --------------------- prep for Teukolsky waveform calculations ---------------------------- //
+
+	//if (mode  == T_WAVEFORM_NIT) // This runs the importing and creation of interpolants in the T_WAVEFORM case
+	//{
+		// First pre-calculate the n_modes and then execute the complex amp code for creating the interpolants:
+
+		vector<int> n_modes;
+
+		for (int i = -40; i <= 40; i++)
+    	{
+			n_modes.push_back(i);
+    	}
+
+		// ------------------------- Interpolant of Complex Amplitudes ------------------------- //
+
+        //----------------------------
+        //  read Almn data from file
+        //----------------------------
+        ifstream inFile;
+
+        // initialize variables outside loops (speeds up by avoiding extra initialization cost)
+        string line, temp;
+        double y_col, e_col, stest;
+        int iter, input, num_cols;
+        vector<double> ys, Es; //y = p-2*e
+        complex<double> Almn; 
+
+        int col_count = 2; // This will be the total number of columns
+        inFile.open("GSF_model_data/A_l2_m2.dat"); 
+        if (!inFile)
+            {
+            cout << "Unable to open file \n";
+            exit(1); // terminate with error
+            }
+        else
+            { // count the number of columns and advance past 1st row
+            // (don't need to erase 1st row later)
+            getline(inFile,line);
+            istringstream ss(line);
+            ss >> temp;
+            ss >> temp;
+            while(ss >> stest) col_count++;
+            }
+            
+        // initialize 2 vectors (real and imaginary) for each n
+        // used an array of vectors (instead of a vector of vectors) because we know the number of columns at this point
+        vector<double> N_re[col_count-2], N_im[col_count-2]; // 1st index is each n, 2nd index is each orbit
+
+        // loop through each orbit (rows in data file)
+        while(getline(inFile,line))
+            {
+            istringstream ss(line);
+
+
+            // I am using y instead of x to match the variable names in the existing code
+            ss >> y_col;    // extracts 1st col, which is y = p-2e
+            ss >> e_col;    // extracts 2nd col, which is e
+
+            ys.push_back(y_col);
+            Es.push_back(e_col);
+            
+            for(iter=0; iter<col_count-2; iter++) // loop through each n (columns in data file)
+                {
+                ss >> Almn;
+                // no need for another vector (n_re & n_im)
+                // can access the components of N_re and N_imag directly
+                N_re[iter].push_back(Almn.real());
+                N_im[iter].push_back(Almn.imag());
+                }
+            }
+        inFile.close();  
+		
+		// Create the interpolants:
+		vector<Interpolant*> N_Interp_re, N_Interp_im;
+        vector<vector<double>> A_re, A_im;
+
+            for (int i = 0; i < col_count - 2; i++)
+            {
+                // Interpolant part:
+                N_Interp_re.push_back(new Interpolant(ys, Es, N_re[i]));
+                N_Interp_im.push_back(new Interpolant(ys, Es, N_im[i]));
+			}
+	//}
+	 // As of now we have a vector of interpolant objects which are callable to find the Almn's
+	
+	t1 = high_resolution_clock::now();
+
+	// ------------------------- waveform computation begins here --------------------------------- //
+	Complex h, HTeuk;
+	vector<double> hplus, hcross, HTeuk_re, HTeuk_im;
+
+	// The new parameter initializations:
+	double Ar, Ai, tt, w_phi, w_r;
+	double p_before,e_before,v_before,phi_before,t_before, chi_before; // needed for delta quantities in omegas
+
+	double m = 2;
+
 	int i_max_test = floor(t_dense.back()/Deltat)-1;
 	if(i_max > i_max_test) i_max = i_max_test;
+
+	// For loop which goes for a very large number of iterations
 	for(int i = 0; i <= i_max; i ++){
 		t 		= i*Deltat;
 		chi 	= chi_interp.eval(t);
-		
+
+	// We calculate the individual quantities usedat each iteration rather than pulling from them all stored somewhere:	
 		p = p_interp.eval(chi);
 		e = e_interp.eval(chi);
 		phi = phi_interp.eval(chi);
-		
-		if(mode == WAVEFORM_NIT){
+
+	// We choose how to calculate v based on whether or not an inverse transformation is needed (NIT or Full)	
+		if(mode == WAVEFORM_NIT || mode  == T_WAVEFORM_NIT){
 			v = v_interp.eval(chi);
 			// Note: The below is really part of reconstructing the physical trajectory, but we don't need it until now. 
 			// It's quick to evaluate (in comparison to U0) so it has only a small effect on the timing
@@ -1244,26 +1402,81 @@ void compute_waveform(string insp_filename, string out_filename){
 		}else{
 			v = chi - v_interp.eval(chi);
 		}
+
+	// We calculate the complex amplitudes of the waveform using the corresponding equation:
+		if(mode == WAVEFORM_NIT){	
+
+			h = waveform_h(p, e, v, phi, 0., 0.);
 		
-		h = waveform_h(p, e, v, phi, 0., 0.);
-		
-		
-		hplus.push_back(h.real());
-		hcross.push_back(h.imag());
-	}
+			hplus.push_back(h.real());
+			hcross.push_back(h.imag());
+
+		} else if (mode == T_WAVEFORM_NIT){
+			if (i == 0){
+				continue; // if we are on the initial iteration, pass to the next (for delta quantities)
+			}
+			else{
+				t_before = (i-1)*Deltat;
+				chi_before = chi_interp.eval(t_before);
+
+				p_before = p_interp.eval(chi_before);
+				e_before = e_interp.eval(chi_before);
+
+				v_before = v_interp.eval(chi_before);
+				phi_before -= V0(p_before,e_before,v_before);
+
+				//Calculate the omega_phi and omega_r for this iteration:
+
+				w_r = (v - v_before)/(t - t_before);
+				w_phi = (phi-phi_before)/(t-t_before);
+
+				// Calculate the un-tilded t:
+
+				tt = t_interp.eval(chi) - U0(p,e,v); // use t_interp or use t = i*Deltat
+
+				// loop to sum all values over the n_modes to find each HTeuk value:
+
+				// Calculate the corresponding Almn for this iteration: (loop these in such that it will 
+				// generate each appropriate a during the summation process)
+
+				Complex sum;
+
+				for (int it = 0; it < N_Interp_re.size(); it++){
+					Ar = N_Interp_re[it]->eval(p-2*e, e);
+					Ai = N_Interp_im[it]->eval(p-2*e, e);
+
+					double power = (m * phi) + (n_modes[it] * v) + (m * w_phi + n_modes[it] * w_r)*(t - tt); 
+    				Complex coeff = (Ar , Ai);
+					sum += coeff * (Cos(power)-Complex(0,Sin(power))); // use Euler's theorem (since power is negative cos-isin)
+				}
+
+				// calculate the waveform stuff for Teukolsky:
+				HTeuk = sum;
+
+				HTeuk_re.push_back(HTeuk.real());
+				HTeuk_im.push_back(HTeuk.imag());
+			}
+		}
+	} // This is the end of the loop that is used to create the complex waveform values
+	
 	t2 = high_resolution_clock::now();
 
 	time_span = duration_cast<duration<double>>(t2 - t1);
 	fout << "# Computing the waveform took: " << time_span.count() << " seconds." << endl;
 	
-	// Output the waveform data
+	// ----------------- Output the waveform data --------------------------
 	cout << "Outputting waveform to " << out_filename << endl;
 	double t_sec;
 	for(int i = 0; i <= i_max; i ++){
 		
 		t_sec 	= i*Deltat_sec;
 		
-		fout << t_sec << " " << hplus[i] << " " << hcross[i] << endl;
+		if (mode  == WAVEFORM_NIT || mode == WAVEFORM_FULL){
+			fout << t_sec << " " << hplus[i] << " " << hcross[i] << endl;\
+
+		} else if (mode == T_WAVEFORM_NIT || mode == T_WAVEFORM_FULL){
+			fout << t_sec << " " << HTeuk_re[i] << " " << HTeuk_im[i] << endl;
+		}
 	}
 	
 }

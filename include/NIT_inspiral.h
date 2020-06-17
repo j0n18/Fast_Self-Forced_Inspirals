@@ -55,6 +55,8 @@ extern "C" {
 #define CONSTRUCT_Fs   			5
 #define WAVEFORM_FULL  			6
 #define WAVEFORM_NIT   			7
+#define T_WAVEFORM_FULL  		8
+#define T_WAVEFORM_NIT   		9
 
 // Functions for computing the RHS of the NIT EoM
 void FFT_self_force_over_parameter_space();

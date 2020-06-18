@@ -1385,7 +1385,7 @@ void compute_waveform(string insp_filename, string out_filename){
 
 	// For loop which goes for a very large number of iterations
 	for(int i = 0; i <= i_max; i ++){
-		t 		= i*Deltat;
+		t 		= i*Deltat; // t is normal t in this loop, so define tt as t tilde
 		chi 	= chi_interp.eval(t);
 
 	// We calculate the individual quantities usedat each iteration rather than pulling from them all stored somewhere:	
@@ -1429,10 +1429,10 @@ void compute_waveform(string insp_filename, string out_filename){
 
 				//Calculate the omega_phi and omega_r for this iteration:
 
-				tt = t_interp.eval(chi)-U0(p,e,v); // use t_interp or use t = i*Deltat
+				tt = t_interp.eval(chi); // this is t tilde since we are not applying the inverse transform
 
-				w_r = (v - v_before)/(t - t_before);
-				w_phi = (phi-phi_before)/(t-t_before);
+				w_r = (v - v_before)/(tt - t_before);
+				w_phi = (phi-phi_before)/(tt-t_before);
 
 				// Calculate the un-tilded t:
 
@@ -1449,7 +1449,7 @@ void compute_waveform(string insp_filename, string out_filename){
 					Ar = N_Interp_re[it]->eval(p-2*e, e);
 					Ai = N_Interp_im[it]->eval(p-2*e, e);
 
-					double power = (m * phi) + (n_modes[it] * v) + (m * w_phi + n_modes[it] * w_r)*(tt-t); // tt is normal t and t is t tilde 
+					double power = (m * phi) + (n_modes[it] * v) + (m * w_phi + n_modes[it] * w_r)*(t-tt); // t is normal t and tt is t tilde 
     				Complex coeff = (Ar , Ai);
 					sum += coeff * (Cos(power)-Complex(0,Sin(power))); // use Euler's theorem (since power is negative cos-isin)
 				}

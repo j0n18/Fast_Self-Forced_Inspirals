@@ -35,6 +35,10 @@ double Interpolant::eval(double x){
 	return gsl_spline_eval(spline, x, xacc);
 }
 
+double Interpolant::eval_deriv(double x){
+	return gsl_spline_eval_deriv(spline, x, xacc);
+}
+
 // Construct a 2D interpolant of f(x,y)
 Interpolant::Interpolant(Vector x, Vector y, Vector f){
 	
@@ -83,6 +87,14 @@ Interpolant::Interpolant(Vector x, Vector y, Vector f){
 // Function that is called to evaluate the 2D interpolant
 double Interpolant::eval(double x, double y){
 	return gsl_spline2d_eval(spline2d, x, y, xacc, yacc);
+}
+
+double Interpolant::eval_xderiv(double x, double y){
+	return gsl_spline2d_eval_deriv_x(spline2d, x, y, xacc, yacc);
+}
+
+double Interpolant::eval_yderiv(double x, double y){
+	return gsl_spline2d_eval_deriv_y(spline2d, x, y, xacc, yacc);
 }
 
 // Destructor

@@ -28,10 +28,13 @@ class Interpolant{
 		// 1D interpolation
 		Interpolant(Vector x, Vector f);
 		double eval(double x);
+		double eval_deriv(double x);
 		
 		// 2D interpolation
 		Interpolant(Vector x, Vector y, Vector f);
 		double eval(double x, double y);
+		double eval_xderiv(double x, double y);
+		double eval_yderiv(double x, double y);
 		
 		// Destructor
 		~Interpolant();

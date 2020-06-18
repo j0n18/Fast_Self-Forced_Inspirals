@@ -926,12 +926,12 @@ return (insp_bt(v,e,p)*Ft+insp_bphi(v,e,p)*Fphi)/insp_q(v,e,p);}
 double getdedchi(double e, double p, double v, double Ft, double Fphi){
 return (insp_at(v,e,p)*Ft+insp_aphi(v,e,p)*Fphi)/insp_q(v,e,p);}
 
-double getF(double e, double p, double v, vector<Interpolant*> F_interp_cos, vector<Interpolant*> F_interp_sin){
+double getF(double e, double p, double v, vector<Interpolant*> F_interp_cos_comp, vector<Interpolant*> F_interp_sin_comp){
 double y = p-2*e;
 int n;
-int n_max = F_interp_cos.size()-1;
-double F = F_interp_cos[0]->eval(y,e);
-for(n=1; n<=n_max; n++)	F += F_interp_cos[n]->eval(y,e)*cos(n*v) + F_interp_sin[n]->eval(y,e)*sin(n*v);
+int n_max = F_interp_cos_comp.size()-1;
+double F = F_interp_cos_comp[0]->eval(y,e);
+for(n=1; n<=n_max; n++)	F += F_interp_cos_comp[n]->eval(y,e)*cos(n*v) + F_interp_sin_comp[n]->eval(y,e)*sin(n*v);
 return F;}
 
 int osc_eqs_default(double chi, const double y[], double f[], void *params){
@@ -940,7 +940,7 @@ int osc_eqs_default(double chi, const double y[], double f[], void *params){
 	double chi0 = y[2];
 	double v = chi - chi0;
 	
-	//double Fr 	= q*(lib_Sch_GSF_Fr_diss(e, p, v) + lib_Sch_GSF_Fr_cons(e, p, v));
+	//double Fr = q*(lib_Sch_GSF_Fr_diss(e, p, v) + lib_Sch_GSF_Fr_cons(e, p, v));
 	//double Fphi = q*(lib_Sch_GSF_Fphi_diss(e, p, v) + lib_Sch_GSF_Fphi_cons(e, p, v));
 	double Ft = q*getF(e, p, v, F_interp_cos[0], F_interp_sin[0]);
     double Fr 	= q*getF(e, p, v, F_interp_cos[1], F_interp_sin[1]);

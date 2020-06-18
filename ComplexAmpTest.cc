@@ -25,46 +25,46 @@ complex<double> Almn;
 int col_count = 2; // This will be the total number of columns
 inFile.open("GSF_model_data/A_l2_m2.dat"); 
 if (!inFile)
-	{
+    {
     cout << "Unable to open file \n";
     exit(1); // terminate with error
-	}
+    }
 else
-	{ // count the number of columns and advance past 1st row
-	  // (don't need to erase 1st row later)
-	getline(inFile,line);
-	istringstream ss(line);
-	ss >> temp;
-	ss >> temp;
-	while(ss >> test) col_count++;
-	}
-	
+    { // count the number of columns and advance past 1st row
+    // (don't need to erase 1st row later)
+    getline(inFile,line);
+    istringstream ss(line);
+    ss >> temp;
+    ss >> temp;
+    while(ss >> test) col_count++;
+    }
+    
 // initialize 2 vectors (real and imaginary) for each n
 // used an array of vectors (instead of a vector of vectors) because we know the number of columns at this point
 vector<double> N_re[col_count-2], N_im[col_count-2]; // 1st index is each n, 2nd index is each orbit
 
 // loop through each orbit (rows in data file)
 while(getline(inFile,line))
-	{
-	istringstream ss(line);
+    {
+    istringstream ss(line);
 
 
-	// I am using y instead of x to match the variable names in the existing code
-	ss >> y_col;    // extracts 1st col, which is y = p-2e
-	ss >> e_col;    // extracts 2nd col, which is e
+    // I am using y instead of x to match the variable names in the existing code
+    ss >> y_col;    // extracts 1st col, which is y = p-2e
+    ss >> e_col;    // extracts 2nd col, which is e
 
-	ys.push_back(y_col);
-	es.push_back(e_col);
-	
-	for(iter=0; iter<col_count-2; iter++) // loop through each n (columns in data file)
-		{
-		ss >> Almn;
-		// no need for another vector (n_re & n_im)
-		// can access the components of N_re and N_imag directly
-		N_re[iter].push_back(Almn.real());
-		N_im[iter].push_back(Almn.imag());
-		}
-	}
+    ys.push_back(y_col);
+    es.push_back(e_col);
+    
+    for(iter=0; iter<col_count-2; iter++) // loop through each n (columns in data file)
+        {
+        ss >> Almn;
+        // no need for another vector (n_re & n_im)
+        // can access the components of N_re and N_imag directly
+        N_re[iter].push_back(Almn.real());
+        N_im[iter].push_back(Almn.imag());
+        }
+    }
 inFile.close();  
 // We have now read all the data, one row at a time, into the program, only leaving the interpolation 
 
@@ -209,16 +209,16 @@ inFile.close();
         output << endl;
 
     }
-	
+    
 // close file
 output.close();
 
 // free memory to prevent memory leaks in future applications
 for(iter = 0; iter < col_count-2; iter++)
-	{
-	delete N_Interp_re[iter];
-	delete N_Interp_im[iter];
-	}
+    {
+    delete N_Interp_re[iter];
+    delete N_Interp_im[iter];
+    }
 
     // --------------------------- End ----------------------------------------- //
 

@@ -1375,7 +1375,7 @@ void compute_waveform(string insp_filename, string out_filename){
 	vector<double> hplus, hcross, HTeuk_re, HTeuk_im;
 
 	// The new parameter initializations:
-	double Ar, Ai, tt, w_phi, w_r;
+	double Ar, Ai, tt,t_b, w_phi, w_r;
 	double p_before,e_before,v_before,phi_before,t_before, chi_before; // needed for delta quantities in omegas
 
 	double m = 2;
@@ -1416,23 +1416,27 @@ void compute_waveform(string insp_filename, string out_filename){
 				continue; // if we are on the initial iteration, pass to the next (for delta quantities)
 			}
 			else{
-				t_before = (i-1)*Deltat;
-				chi_before = chi_interp.eval(t_before);
+				t_b = (i-1)*Deltat;
+				chi_before = chi_interp.eval(t_b);
+				t_before = t_interp.eval(chi_before);
 
 				p_before = p_interp.eval(chi_before);
 				e_before = e_interp.eval(chi_before);
 
 				v_before = v_interp.eval(chi_before);
+				phi_before = phi_interp.eval(chi_before); // this line has to come befoere the next line in the T_WAVEFORM_NIT case
 				phi_before -= V0(p_before,e_before,v_before);
 
 				//Calculate the omega_phi and omega_r for this iteration:
+
+				tt = t_interp.eval(chi)-U0(p,e,v); // use t_interp or use t = i*Deltat
 
 				w_r = (v - v_before)/(t - t_before);
 				w_phi = (phi-phi_before)/(t-t_before);
 
 				// Calculate the un-tilded t:
 
-				tt = t_interp.eval(chi) - U0(p,e,v); // use t_interp or use t = i*Deltat
+				
 
 				// loop to sum all values over the n_modes to find each HTeuk value:
 
@@ -1445,7 +1449,7 @@ void compute_waveform(string insp_filename, string out_filename){
 					Ar = N_Interp_re[it]->eval(p-2*e, e);
 					Ai = N_Interp_im[it]->eval(p-2*e, e);
 
-					double power = (m * phi) + (n_modes[it] * v) + (m * w_phi + n_modes[it] * w_r)*(t - tt); 
+					double power = (m * phi) + (n_modes[it] * v) + (m * w_phi + n_modes[it] * w_r)*(tt-t); // tt is normal t and t is t tilde 
     				Complex coeff = (Ar , Ai);
 					sum += coeff * (Cos(power)-Complex(0,Sin(power))); // use Euler's theorem (since power is negative cos-isin)
 				}

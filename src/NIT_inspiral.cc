@@ -1270,7 +1270,7 @@ void compute_waveform(string insp_filename, string out_filename){
 		v += 2.0*M_PI/10.;
 	
 	}
-	fprintf(stderr, "test 1\n");
+	
 	Interpolant v_interp(t_dense, v_dense);
 	high_resolution_clock::time_point t2 = high_resolution_clock::now();
 

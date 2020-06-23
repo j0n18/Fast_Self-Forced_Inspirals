@@ -46,7 +46,7 @@
 #define OUT_PREC 12
 
 // numerical tolerance for ODE integrations
-#define NUM_TOL 1.0e-10
+#define NUM_TOL 1.0e-11
 
 // smallest value for p-2*e-6
 #define Y_MIN 0.1
@@ -1182,7 +1182,7 @@ void compute_waveform(string insp_filename, string out_filename){
 	
 	// FIXME only load data up to t_max (rather than the entire phase space trajectory as is currently done)	
 	string insp_string;
-	vector<double> chis, ps, es, vs, ts, phis;
+	vector<double> ps, es, vs, ts, phis;
 	double chi, p, e, v, t, phi;
 	int test = 0;
 	while(getline(insp, insp_string)){
@@ -1192,24 +1192,26 @@ void compute_waveform(string insp_filename, string out_filename){
 		stringstream insp_ss(insp_string);
 		
 		insp_ss >> chi >> p >> e >> v >> t >> phi;
+						
+		if(mode == WAVEFORM_FULL || mode == T_WAVEFORM_FULL)
+			v = chi-v;
 		
 		if(test == 0) test = 1;
-		else if(chi <= chis.back()) break;
-				
-		chis.push_back(chi);
+		else if(v <= vs.back()) break;
+		
+		vs.push_back(v);
+		
 		ps.push_back(p);
 		es.push_back(e);
-		vs.push_back(v);
 		ts.push_back(t);
 		phis.push_back(phi);
 	}
 	
-	Interpolant p_interp(chis, ps);
-	Interpolant e_interp(chis, es);
-	Interpolant v_interp(chis, vs);
-	Interpolant t_interp(chis, ts);
-	Interpolant phi_interp(chis, phis);
-	
+	Interpolant p_interp(vs, ps);
+	Interpolant e_interp(vs, es);
+	Interpolant t_interp(vs, ts);
+	Interpolant phi_interp(vs, phis);
+		
 	// Read in the parameters and give an error if they do not exist
 	double M_solar, Deltat_sec;
 	int i_max;
@@ -1248,26 +1250,28 @@ void compute_waveform(string insp_filename, string out_filename){
 	// FIXME only resample up to t_max
     high_resolution_clock::time_point t1 = high_resolution_clock::now();
 	double t_max = i_max*Deltat;
-	vector<double> t_dense, chi_dense;
-	chi = 0;
-	while(chi < chis[chis.size() - 1]){
+	vector<double> t_dense, v_dense;
 	
-		p = p_interp.eval(chi);
-		e = e_interp.eval(chi);
-		v = v_interp.eval(chi);
+	v = vs[0];
+		
+	while(v < vs[vs.size() - 1]){
+	
+		p = p_interp.eval(v);
+		e = e_interp.eval(v);
 			
-		chi_dense.push_back(chi);
-		if(mode == WAVEFORM_NIT || mode == T_WAVEFORM_NIT) t = t_interp.eval(chi) - U0(p,e,v);
-		else t = t_interp.eval(chi);
+		v_dense.push_back(v);
+		if(mode == WAVEFORM_NIT || mode == T_WAVEFORM_NIT) t = t_interp.eval(v) - U0(p,e,v);
+		else t = t_interp.eval(v);
 		
 		t_dense.push_back(t);
 		
 		if(t > t_max) break;	
 		
-		chi += 2.0*M_PI/10.;
+		v += 2.0*M_PI/10.;
 	
 	}
-	Interpolant chi_interp(t_dense, chi_dense);
+	fprintf(stderr, "test 1\n");
+	Interpolant v_interp(t_dense, v_dense);
 	high_resolution_clock::time_point t2 = high_resolution_clock::now();
 
 	duration<double> time_span = duration_cast<duration<double>>(t2 - t1);
@@ -1278,10 +1282,6 @@ void compute_waveform(string insp_filename, string out_filename){
 	} else if (mode == T_WAVEFORM_NIT){
 		fout << "# Format: t Re(HTeuk) Im(HTeuk)" << endl;
 	}
-	
-
-    
-
 
 	// --------------------- prep for Teukolsky waveform calculations ---------------------------- //
 
@@ -1376,7 +1376,7 @@ void compute_waveform(string insp_filename, string out_filename){
 
 	// The new parameter initializations:
 	double Ar, Ai, tt,t_b, w_phi, w_r;
-	double p_before,e_before,v_before,phi_before,t_before, chi_before; // needed for delta quantities in omegas
+	double p_before,e_before,v_before,phi_before,t_before; // needed for delta quantities in omegas
 
 	double m = 2;
 
@@ -1386,25 +1386,19 @@ void compute_waveform(string insp_filename, string out_filename){
 	// For loop which goes for a very large number of iterations
 	for(int i = 0; i <= i_max; i ++){
 		t 		= i*Deltat; // t is normal t in this loop, so define tt as t tilde
-		chi 	= chi_interp.eval(t);
+		v 	= v_interp.eval(t);
 
 	// We calculate the individual quantities usedat each iteration rather than pulling from them all stored somewhere:	
-		p = p_interp.eval(chi);
-		e = e_interp.eval(chi);
-		phi = phi_interp.eval(chi);
+		p = p_interp.eval(v);
+		e = e_interp.eval(v);
+		phi = phi_interp.eval(v);
 
-	// We choose how to calculate v based on whether or not an inverse transformation is needed (NIT or Full)	
-		if(mode == WAVEFORM_NIT || mode  == T_WAVEFORM_NIT){
-			v = v_interp.eval(chi);
-			// Note: The below is really part of reconstructing the physical trajectory, but we don't need it until now. 
-			// It's quick to evaluate (in comparison to U0) so it has only a small effect on the timing
+	// Need phi for -w -n, but keep phi-tilde for -t -n
+		if(mode == WAVEFORM_NIT)
 			phi -= V0(p,e,v);						
-		}else{
-			v = chi - v_interp.eval(chi);
-		}
-
+		
 	// We calculate the complex amplitudes of the waveform using the corresponding equation:
-		if(mode == WAVEFORM_NIT){	
+		if(mode == WAVEFORM_NIT || mode == WAVEFORM_FULL){
 
 			h = waveform_h(p, e, v, phi, 0., 0.);
 		
@@ -1417,15 +1411,13 @@ void compute_waveform(string insp_filename, string out_filename){
 			}
 			else{
 				t_b = (i-1)*Deltat;
-				chi_before = chi_interp.eval(t_b);
-				t_before = t_interp.eval(chi_before);
+				v_before = v_interp.eval(t_b);
+				t_before = t_interp.eval(v_before); // t-tilde
 
-				p_before = p_interp.eval(chi_before);
-				e_before = e_interp.eval(chi_before);
+				p_before = p_interp.eval(v_before);
+				e_before = e_interp.eval(v_before);
 
-				v_before = v_interp.eval(chi_before);
-				phi_before = phi_interp.eval(chi_before); // this line has to come befoere the next line in the T_WAVEFORM_NIT case
-				phi_before -= V0(p_before,e_before,v_before);
+				phi_before = phi_interp.eval(v_before); // again keep phi-tilde for -t -n
 
 				//Calculate the omega_phi and omega_r for this iteration:
 

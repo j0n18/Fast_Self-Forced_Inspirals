@@ -1389,26 +1389,9 @@ void compute_waveform(string insp_filename, string out_filename){
 		v 	= v_interp.eval(t);
 
 	// We calculate the individual quantities usedat each iteration rather than pulling from them all stored somewhere:	
-<<<<<<< HEAD
-		p = p_interp.eval(chi);
-		e = e_interp.eval(chi);
-		phi = phi_interp.eval(chi);
-
-	// We choose how to calculate v based on whether or not an inverse transformation is needed (NIT or Full)	
-		if(mode == WAVEFORM_NIT || mode  == T_WAVEFORM_NIT){
-			v = v_interp.eval(chi);
-			// Note: The below is really part of reconstructing the physical trajectory, but we don't need it until now. 
-			if(mode == WAVEFORM_NIT){// It's quick to evaluate (in comparison to U0) so it has only a small effect on the timing
-			phi -= V0(p,e,v);	
-			}					
-		}else{
-			v = chi - v_interp.eval(chi);
-		}
-=======
 		p = p_interp.eval(v);
 		e = e_interp.eval(v);
 		phi = phi_interp.eval(v);
->>>>>>> f9512286c7b37f6a16cea4c2b4776070d7e324c6
 
 	// Need phi for -w -n, but keep phi-tilde for -t -n
 		if(mode == WAVEFORM_NIT)
@@ -1438,7 +1421,7 @@ void compute_waveform(string insp_filename, string out_filename){
 
 				//Calculate the omega_phi and omega_r for this iteration:
 
-				tt = t_interp.eval(chi); // this is t tilde since we are not applying the inverse transform
+				tt = t_interp.eval(v); // this is t tilde since we are not applying the inverse transform
 
 				w_r = (v - v_before)/(tt - t_before);
 				w_phi = (phi-phi_before)/(tt-t_before);

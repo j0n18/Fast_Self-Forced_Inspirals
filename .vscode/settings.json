@@ -6,6 +6,8 @@
         "utility": "cpp",
         "complex": "cpp",
         "iostream": "cpp",
-        "chrono": "cpp"
+        "chrono": "cpp",
+        "algorithm": "cpp",
+        "iosfwd": "cpp"
     }
 }

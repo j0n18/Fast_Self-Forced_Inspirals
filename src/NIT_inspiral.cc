@@ -1397,8 +1397,9 @@ void compute_waveform(string insp_filename, string out_filename){
 		if(mode == WAVEFORM_NIT || mode  == T_WAVEFORM_NIT){
 			v = v_interp.eval(chi);
 			// Note: The below is really part of reconstructing the physical trajectory, but we don't need it until now. 
-			// It's quick to evaluate (in comparison to U0) so it has only a small effect on the timing
-			phi -= V0(p,e,v);						
+			if(mode == WAVEFORM_NIT){// It's quick to evaluate (in comparison to U0) so it has only a small effect on the timing
+			phi -= V0(p,e,v);	
+			}					
 		}else{
 			v = chi - v_interp.eval(chi);
 		}
@@ -1425,7 +1426,7 @@ void compute_waveform(string insp_filename, string out_filename){
 
 				v_before = v_interp.eval(chi_before);
 				phi_before = phi_interp.eval(chi_before); // this line has to come befoere the next line in the T_WAVEFORM_NIT case
-				phi_before -= V0(p_before,e_before,v_before);
+				//phi_before -= V0(p_before,e_before,v_before);
 
 				//Calculate the omega_phi and omega_r for this iteration:
 

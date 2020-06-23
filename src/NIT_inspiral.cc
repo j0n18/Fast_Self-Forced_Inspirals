@@ -1421,7 +1421,7 @@ void compute_waveform(string insp_filename, string out_filename){
 
 				//Calculate the omega_phi and omega_r for this iteration:
 
-				tt = t_interp.eval(chi); // this is t tilde since we are not applying the inverse transform
+				tt = t_interp.eval(v); // this is t tilde since we are not applying the inverse transform
 
 				w_r = (v - v_before)/(tt - t_before);
 				w_phi = (phi-phi_before)/(tt-t_before);

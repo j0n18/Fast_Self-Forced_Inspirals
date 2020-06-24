@@ -1475,10 +1475,6 @@ void compute_waveform(string insp_filename, string out_filename){
 			double w_r = 0;
 			double w_phi = 0;
 
-			//cout << j << endl;
-
-			// keep vj of previous j delta with the last value of vj not for each iteration of vj(maybe calculate frequencies here?)
-			// when j turns, keep with the omega at the turniing point fromj to j+1
 			//Conditional statement to update j and vj if j_before changes
 			if (j != j_before){
 			

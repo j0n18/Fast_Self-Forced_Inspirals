@@ -95,10 +95,10 @@ int main(int argc, char* argv[]){
 				q  = atof(argv[4]);
 				if( !strcmp(argv[5], "-n") ){
 					mode = WAVEFORM_NIT; 
-					cout << "Compute the NIT waveform" << endl;
+					cout << "Compute the NIT kludge waveform" << endl;
 				}else if( !strcmp(argv[5], "-f") ){
 					 mode = WAVEFORM_FULL;
-					 cout << "Compute the Full waveform" << endl;
+					 cout << "Compute the Full kludge waveform" << endl;
 				}else{
 					cout << "Unrecognized waveform flag" << endl;
 					exit(0);
@@ -145,7 +145,7 @@ int main(int argc, char* argv[]){
 		}
 	}else{
 		cout << "Necessary parameters:" << endl;
-		cout << "\t1. flag      '-f', '-f0', '-n', '-n0', '-w', '-d' or '-c' " << endl;
+		cout << "\t1. flag      '-f', '-f0', '-n', '-n0', '-w', '-t', '-d' or '-c' " << endl;
 		cout << "\t   '-f'      Full inspiral" << endl;
 		cout << "\t   '-f0'     Default Full inspiral" << endl;
 		cout << "\t   '-n'      NIT inspiral" << endl;
@@ -1270,7 +1270,7 @@ void compute_waveform(string insp_filename, string out_filename){
 		v += 2.0*M_PI/10.;
 	
 	}
-	fprintf(stderr, "test 1\n");
+	 // fprintf(stderr, "test 1\n");
 	Interpolant v_interp(t_dense, v_dense);
 	high_resolution_clock::time_point t2 = high_resolution_clock::now();
 
@@ -1442,7 +1442,7 @@ void compute_waveform(string insp_filename, string out_filename){
 					Ai = N_Interp_im[it]->eval(p-2*e, e);
 
 					double power = (m * phi) + (n_modes[it] * v) + (m * w_phi + n_modes[it] * w_r)*(t-tt); // t is normal t and tt is t tilde 
-    				Complex coeff = (Ar , Ai);
+    				Complex coeff = Complex(Ar , Ai);
 					sum += coeff * (Cos(power)-Complex(0,Sin(power))); // use Euler's theorem (since power is negative cos-isin)
 				}
 
@@ -1452,6 +1452,72 @@ void compute_waveform(string insp_filename, string out_filename){
 				HTeuk_re.push_back(HTeuk.real());
 				HTeuk_im.push_back(HTeuk.imag());
 			}
+		} else if (mode == T_WAVEFORM_FULL){
+			
+			// ------------------------ j(v) and j related calculations --------------------------- //
+			if (i == 0){
+				v_before = v;
+				continue;
+			} else if(i != 0){
+			
+			double j = floor(v/(2*M_PI)); // j as a function of v
+
+			if(j == 0){
+				j = 1;
+			}
+			
+			double vj = 2*M_PI*j;
+			double j_before = floor(v_before/(2*M_PI)); // j as a function of v
+			double vj_before = 2*M_PI*j_before;
+			double tj_before = t_interp.eval(vj_before); 
+			double phij_before = phi_interp.eval(vj_before);
+
+			double w_r = 0;
+			double w_phi = 0;
+
+			//cout << j << endl;
+
+			// keep vj of previous j delta with the last value of vj not for each iteration of vj(maybe calculate frequencies here?)
+			// when j turns, keep with the omega at the turniing point fromj to j+1
+			//Conditional statement to update j and vj if j_before changes
+			if (j != j_before){
+			
+				vj = 2*M_PI*j;
+				j_before = j; 
+				double tj = t_interp.eval(vj);
+				double phij = phi_interp.eval(vj);
+				w_r = (vj - vj_before)/(tj - tj_before);
+				w_phi = (phij - phij_before)/(tj - tj_before);
+				}
+			
+			double tj = t_interp.eval(vj);
+			double phij = phi_interp.eval(vj);
+			
+			// ---------------------- Calculaint HTeuk using 3.4,3.5,3.6 and 3.13 ----------------- // 
+			if (i < 40){
+			cout << w_r << " " << w_phi << endl;
+			cout << j << endl;
+			}
+				Complex sum;
+
+				for (int it = 0; it < N_Interp_re.size(); it++){
+					Ar = N_Interp_re[it]->eval(p-2*e, e);
+					Ai = N_Interp_im[it]->eval(p-2*e, e);
+
+					double power = (m * phij) + (n_modes[it] * vj) + (m * w_phi + n_modes[it] * w_r)*(t-tj); // t is normal t and tt is t tilde 
+    				Complex coeff = Complex(Ar , Ai);
+					sum += coeff * (Cos(power)-Complex(0,Sin(power))); // use Euler's theorem (since power is negative cos-isin)
+				}
+
+				// calculate the waveform stuff for Teukolsky:
+				HTeuk = sum;
+
+				HTeuk_re.push_back(HTeuk.real());
+				HTeuk_im.push_back(HTeuk.imag());
+
+			}
+
+
 		}
 	} // This is the end of the loop that is used to create the complex waveform values
 	

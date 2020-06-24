@@ -1465,7 +1465,7 @@ void compute_waveform(string insp_filename, string out_filename){
 			if(j == 0){
 				j = 1;
 			}
-			
+
 			double vj = 2*M_PI*j;
 			double j_before = floor(v_before/(2*M_PI)); // j as a function of v
 			double vj_before = 2*M_PI*j_before;

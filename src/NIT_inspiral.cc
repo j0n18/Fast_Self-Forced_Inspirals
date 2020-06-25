@@ -1270,7 +1270,7 @@ void compute_waveform(string insp_filename, string out_filename){
 		v += 2.0*M_PI/10.;
 	
 	}
-	 // fprintf(stderr, "test 1\n");
+	
 	Interpolant v_interp(t_dense, v_dense);
 	high_resolution_clock::time_point t2 = high_resolution_clock::now();
 
@@ -1385,8 +1385,8 @@ void compute_waveform(string insp_filename, string out_filename){
 
 	// For loop which goes for a very large number of iterations
 	for(int i = 0; i <= i_max; i ++){
-		t 		= i*Deltat; // t is normal t in this loop, so define tt as t tilde
-		v 	= v_interp.eval(t);
+		t = i*Deltat; // t is normal t in this loop, so define tt as t tilde
+		v = v_interp.eval(t);
 
 	// We calculate the individual quantities usedat each iteration rather than pulling from them all stored somewhere:	
 		p = p_interp.eval(v);
@@ -1426,12 +1426,7 @@ void compute_waveform(string insp_filename, string out_filename){
 				w_r = (v - v_before)/(tt - t_before);
 				w_phi = (phi-phi_before)/(tt-t_before);
 
-				// Calculate the un-tilded t:
-
-				
-
 				// loop to sum all values over the n_modes to find each HTeuk value:
-
 				// Calculate the corresponding Almn for this iteration: (loop these in such that it will 
 				// generate each appropriate a during the summation process)
 

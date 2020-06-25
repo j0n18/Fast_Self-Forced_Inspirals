@@ -1372,7 +1372,7 @@ void compute_waveform(string insp_filename, string out_filename){
 
 	// ------------------------- waveform computation begins here --------------------------------- //
 	Complex h, HTeuk;
-	vector<double> hplus, hcross, HTeuk_re, HTeuk_im;
+	vector<double> hplus, hcross, HTeuk_re, HTeuk_im, jVector; // jVector is for T_WAVEFORM_FULL
 
 	// The new parameter initializations:
 	double Ar, Ai, tt,t_b, w_phi, w_r;
@@ -1451,48 +1451,38 @@ void compute_waveform(string insp_filename, string out_filename){
 			
 			// ------------------------ j(v) and j related calculations --------------------------- //
 			if (i == 0){
-				v_before = v;
+				double w_r = v/t_interp.eval(v);
+				double w_phi = (2*M_PI)/t_interp.eval(v);
+				double j = floor(v/(2*M_PI)); // j as a function of v
+				jVector.push_back(j);
 				continue;
+
 			} else if(i != 0){
 			
 			double j = floor(v/(2*M_PI)); // j as a function of v
-
+			jVector.push_back(j);
 			
 			if(j == 0){
 				j = 1;
 			}
 			
-
-			double vj = 2*M_PI*j;
-			double j_before = floor(v_before/(2*M_PI)); // j as a function of v
-			double vj_before = 2*M_PI*j_before;
+			double vj = 2*M_PI*jVector[i];
+			double vj_before = 2*M_PI*jVector[i-1];
 			double tj_before = t_interp.eval(vj_before); 
 			double phij_before = phi_interp.eval(vj_before);
-
-			double w_r = 0;
-			double w_phi = 0;
-
-			//Conditional statement to update j and vj if j_before changes
-			if (j != j_before){
-			
-				vj = 2*M_PI*j;
-				j_before = j; 
-				double tj = t_interp.eval(vj);
-				double phij = phi_interp.eval(vj);
-				w_r = (vj - vj_before)/(tj - tj_before);
-				w_phi = (phij - phij_before)/(tj - tj_before);
-				}
-			
 			double tj = t_interp.eval(vj);
 			double phij = phi_interp.eval(vj);
+
+			//Conditional statement to update j and vj if j_before changes
+			if (jVector[i] != jVector[i-1]){
+
+				w_r = (vj - vj_before)/(tj - tj_before);
+				w_phi = (phij - phij_before)/(tj - tj_before);
+				
+				}
 			
 			// ---------------------- Calculaint HTeuk using 3.4,3.5,3.6 and 3.13 ----------------- // 
-			/*
-			if (i < 40){
-			cout << w_r << " " << w_phi << endl;
-			cout << j << endl;
-			}
-			*/
+
 				Complex sum;
 
 				for (int it = 0; it < N_Interp_re.size(); it++){

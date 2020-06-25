@@ -1462,9 +1462,11 @@ void compute_waveform(string insp_filename, string out_filename){
 			
 			double j = floor(v/(2*M_PI)); // j as a function of v
 
+			
 			if(j == 0){
 				j = 1;
 			}
+			
 
 			double vj = 2*M_PI*j;
 			double j_before = floor(v_before/(2*M_PI)); // j as a function of v
@@ -1490,10 +1492,12 @@ void compute_waveform(string insp_filename, string out_filename){
 			double phij = phi_interp.eval(vj);
 			
 			// ---------------------- Calculaint HTeuk using 3.4,3.5,3.6 and 3.13 ----------------- // 
+			/*
 			if (i < 40){
 			cout << w_r << " " << w_phi << endl;
 			cout << j << endl;
 			}
+			*/
 				Complex sum;
 
 				for (int it = 0; it < N_Interp_re.size(); it++){

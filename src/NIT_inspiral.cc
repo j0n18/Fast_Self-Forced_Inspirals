@@ -1451,10 +1451,15 @@ void compute_waveform(string insp_filename, string out_filename){
 			
 			// ------------------------ j(v) and j related calculations --------------------------- //
 			if (i == 0){
-				double w_r = v/t_interp.eval(v);
-				double w_phi = (2*M_PI)/t_interp.eval(v);
+				 w_r = (2*M_PI)/(t_interp.eval(4*M_PI)-t_interp.eval(2*M_PI));
+				 w_phi = (phi_interp.eval(4*M_PI)-phi_interp.eval(2*M_PI))/(t_interp.eval(4*M_PI)-t_interp.eval(2*M_PI));
 				double j = floor(v/(2*M_PI)); // j as a function of v
 				jVector.push_back(j);
+
+				if(j == 0){
+					j = 1;
+				}
+				
 				continue;
 
 			} else if(i != 0){
@@ -1478,7 +1483,7 @@ void compute_waveform(string insp_filename, string out_filename){
 
 				w_r = (vj - vj_before)/(tj - tj_before);
 				w_phi = (phij - phij_before)/(tj - tj_before);
-				
+
 				}
 			
 			// ---------------------- Calculaint HTeuk using 3.4,3.5,3.6 and 3.13 ----------------- // 

@@ -1206,6 +1206,9 @@ void compute_waveform(string insp_filename, string out_filename){
 		ts.push_back(t);
 		phis.push_back(phi);
 	}
+
+	//cout << vs.size() << endl;
+
 	
 	Interpolant p_interp(vs, ps);
 	Interpolant e_interp(vs, es);

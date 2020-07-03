@@ -1547,7 +1547,8 @@ void compute_waveform(string insp_filename, string out_filename){
 // Returns the quadrupolar waveform, Z = Cos Theta and Theta and Phi are the angles between the detector and the source
 Complex waveform_h(double p, double e, double v, double phi, double Z, double Phi){
 	
-	Complex XX = (5*Power(e,4) + Power(e,2)*(52 - 10*p) - 8*(-2 + p)*p)*Sqrt(-6 + p - 2*e*Cos(v)) + 
+	// Older equation to calculate waveform.
+	/* Complex XX = (5*Power(e,4) + Power(e,2)*(52 - 10*p) - 8*(-2 + p)*p)*Sqrt(-6 + p - 2*e*Cos(v)) + 
    e*(48 - Power(e,2)*(-56 + p) + 4*(4 - 3*p)*p)*Cos(v)*Sqrt(-6 + p - 2*e*Cos(v)) + 
    2*Power(e,2)*(30 + 4*Power(e,2) + (5 - 2*p)*p)*Sqrt(-6 + p - 2*e*Cos(v))*Cos(2*v) + Power(e,3)*(24 + p)*Sqrt(-6 + p - 2*e*Cos(v))*Cos(3*v) + 
    3*Power(e,4)*Sqrt(-6 + p - 2*e*Cos(v))*Cos(4*v) - Complex(0,8)*e*Sqrt(p)*(-6 + p - 2*e*Cos(v))*(-1 + p - e*Cos(v))*(1 + e*Cos(v))*Sin(v);
@@ -1556,5 +1557,25 @@ Complex waveform_h(double p, double e, double v, double phi, double Z, double Ph
     (4.*(-4*Power(e,2) + Power(-2 + p,2))*Power(p,1.5)*Sqrt(-6 + p - 2*e*Cos(v))) - 
    (e*(-1 + Power(Z,2))*(2 - p + 2*e*Cos(v))*((Power(e,2)*(56 - 13*p) + 4*(12 - 8*p + Power(p,2)))*Cos(v) + 
         e*(52 + 5*Power(e,2) - 34*p + 4*Power(p,2) + 2*(30 + 4*Power(e,2) - 7*p)*Cos(2*v) - 3*e*(-8 + p)*Cos(3*v) + 3*Power(e,2)*Cos(4*v))))/
-    (2.*(-4*Power(e,2) + Power(-2 + p,2))*Power(p,2));
+    (2.*(-4*Power(e,2) + Power(-2 + p,2))*Power(p,2)); */
+
+
+	//Equation generated from waves.pdf
+	return -((Sqrt(Pi/5.)*(-2 + p - 2*e*Cos(v))*(Cos(2*phi) - Complex(0,1)*Sin(2*phi))*
+       (-52*Power(e,2)*Sqrt(p/(-6 + p - 2*e*Cos(v))) - 
+         5*Power(e,4)*Sqrt(p/(-6 + p - 2*e*Cos(v))) - 16*p*Sqrt(p/(-6 + p - 2*e*Cos(v))) + 
+         10*Power(e,2)*p*Sqrt(p/(-6 + p - 2*e*Cos(v))) + 
+         8*Power(p,2)*Sqrt(p/(-6 + p - 2*e*Cos(v))) + 
+         e*(Power(e,2)*(-56 + p) + 4*(-12 - 4*p + 3*Power(p,2)))*Cos(v)*
+          Sqrt(p/(-6 + p - 2*e*Cos(v))) - 
+         2*Power(e,2)*(30 + 4*Power(e,2) + 5*p - 2*Power(p,2))*
+          Sqrt(p/(-6 + p - 2*e*Cos(v)))*Cos(2*v) - 
+         24*Power(e,3)*Sqrt(p/(-6 + p - 2*e*Cos(v)))*Cos(3*v) - 
+         Power(e,3)*p*Sqrt(p/(-6 + p - 2*e*Cos(v)))*Cos(3*v) - 
+         3*Power(e,4)*Sqrt(p/(-6 + p - 2*e*Cos(v)))*Cos(4*v) - Complex(0,8)*e*p*Sin(v) - 
+         Complex(0,2)*Power(e,3)*p*Sin(v) + Complex(0,8)*e*Power(p,2)*Sin(v) - 
+         Complex(0,8)*Power(e,2)*p*Sin(2*v) + Complex(0,4)*Power(e,2)*Power(p,2)*Sin(2*v) - 
+         Complex(0,2)*Power(e,3)*p*Sin(3*v)))/
+     ((-4*Power(e,2) + Power(-2 + p,2))*Power(p,2)*Sqrt(p/(-6 + p - 2*e*Cos(v)))));
+
 }

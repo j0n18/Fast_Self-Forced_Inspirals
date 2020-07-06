@@ -3,3 +3,4 @@ NIT_inspiral
 build
 *.o
 getit
+*.dat

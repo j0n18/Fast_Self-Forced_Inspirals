@@ -2,3 +2,4 @@ NIT_inspiral
 .sconsign.dblite
 build
 *.o
+getit

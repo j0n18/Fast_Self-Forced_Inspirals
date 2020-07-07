@@ -84,7 +84,7 @@ typedef complex<double> Complex;
 
 using namespace libconfig;
 Config cfg;
-ofstream fout;
+
 
 
 // precision of output
@@ -100,10 +100,26 @@ double EllipticEIncomp(double phi, double k);
 double EllipticPi(double n, double k);
 double EllipticPiIncomp(double n, double phi, double k);
 
+// ------------------------------------------------------------------------- //
+/*
+ * Erase First Occurrence of given  substring from main string.
+ */
+void eraseSubStr(std::string & mainStr, const std::string & toErase)
+{
+    // Search for the substring in string
+    size_t pos = mainStr.find(toErase);
+    if (pos != std::string::npos)
+    {
+        // If found then erase it from string
+        mainStr.erase(pos, toErase.length());
+    }
+}
+// ------------------------------------------------------------------------- //
+
+
 // ----------------------------- Generate the Inspiral Data ---------------------------------------
 int main(int argc, char* argv[])
 {
-
 
 // Check the config file exists and is well formatted
     try{
@@ -117,33 +133,128 @@ int main(int argc, char* argv[])
     }
 
 
+string fileloc, NITfile0, Fullfile0, NITfile, Fullfile, outNITfile0, outFullfile0, outNITfile, outFullfile;
+vector<string> NITStringsList, FullStringsList, outNITStringsList, outFullStringsList;
 
+fileloc = "/mnt/c/Users/JonnyM/Desktop/GravityWaves/Fast_Self-Forced_Inspirals/";
 
-string fileloc, NITfile, Fullfile;
+ // Initial strings
+NITfile0 = "NIT_inspiral -n0 10 0.1 0.001";
+Fullfile0 = "NIT_inspiral -f0 10 0.1 0.001"; // The first part should be NIT_inspiral for directory reasons. -f0 signifies Full.
 
-// "C:\\Users\\JonnyM\\Desktop\\GravityWaves\\Fast_Self-Forced_Inspirals\\NIT_inspiral.o"
+double dp = 0.5;
+double de = 0.1;
+int pmax = 12; // make 19
+int pmin = 11; // make 10
+double emax = 0.75; // This will be rounded to 0.7
+double emin = 0.6; // make 0.1
+double floatValue, in_val;
 
-//fileloc = "C:\\Users\\JonnyM\\Desktop\\GravityWaves\\Fast_Self-Forced_Inspirals\\NIT_inspiral";
-//NITfile = " -n0 12 0.7 0.001";
-//Fullfile = " -f0 12 0.7 0.001";
+string half = ".5";
+string in_str, sub, sub1;
+string newNIT, newFull,newNIT_e, newFull_e, newoutNIT, newoutFull,newoutNIT_e, newoutFull_e;
+Fullfile = Fullfile0;
+NITfile = NITfile0;
+
+vector<string> OutputFiles;
+string outputFile, newoutputFile,newoutputFile_e;
+
+string outputFile0 = "output/ErrorData_p10_e0.1_q0.001.dat";
+outputFile = outputFile0;
+
+outNITfile0 = "output/Inspiral_NIT_p12_e0.7_q0.001.dat";
+outFullfile0 = "output/Inspiral_Full_p12_e0.7_q0.001.dat";
+
+outFullfile = outFullfile0;
+outNITfile = outNITfile0;
+
+for ( int i = 0; i <= floor((pmax - pmin)*(1/dp)); i++) // eventually include evething upt to and including GetErrors(inputStrings,outputFile); in this loop
+{
+	in_val = pmin + i*dp;
+	in_str = to_string(in_val);
+	sub = in_str.substr(0,4);
+	sub1 = in_str.substr(0,2);
+
+	newNIT = NITfile.replace(17,2,sub);
+	newFull = Fullfile.replace(17,2,sub);
+	newoutNIT = outNITfile.replace(21,2,sub1);
+	newoutFull = outFullfile.replace(22,2,sub1);
+
+	if (i % 2 == 0){
+		newoutputFile = outputFile.replace(18,2,sub1);
+	} else if (i % 2 == 1){
+		newoutputFile = outputFile.replace(18,2,sub);
+	}
+
+	for ( int j = 0; j <= floor((emax - emin)*(1/de)); j++) // eventually include evething upt to and including GetErrors(inputStrings,outputFile); in this loop
+	{	
+		in_val = emin + j*de;
+		in_str = to_string(in_val);
+		sub = in_str.substr(0,3);
+
+		newNIT_e = newNIT.replace(22,3,sub);
+		newFull_e = newFull.replace(22,3,sub);
+		newoutNIT_e = newoutNIT.replace(25,3,sub);
+		newoutFull_e = newoutFull.replace(26,3,sub);
+		newoutputFile_e = newoutputFile.replace(22,3,sub);
+		
+		NITStringsList.push_back(newNIT_e);
+		FullStringsList.push_back(newFull_e);
+		outNITStringsList.push_back(newoutNIT_e);
+		outFullStringsList.push_back(newoutFull_e);
+		OutputFiles.push_back(newoutputFile_e);
+	}
+
+	string in_str, sub, sub1;
+	string newNIT, newFull, newNIT_e, newFull_e, newoutNIT, newoutFull, newoutNIT_e, newoutFull_e, newoutputFile, newoutputFile_e;
+	Fullfile = Fullfile0;
+	NITfile = NITfile0;
+	outFullfile = outFullfile0;
+	outNITfile = outNITfile0;
+	outputFile = outputFile0;
+}
+
 cout << "Running GetErrorData.cc"<< endl;
-system("/mnt/c/Users/JonnyM/Desktop/GravityWaves/Fast_Self-Forced_Inspirals/NIT_inspiral -n0 12 0.7 0.001");
-//fileloc.append(Fullfile)
-//fileloc = "C:\\Users\\JonnyM\\Desktop\\GravityWaves\\Fast_Self-Forced_Inspirals\\NIT_inspiral";
-system("/mnt/c/Users/JonnyM/Desktop/GravityWaves/Fast_Self-Forced_Inspirals/NIT_inspiral -f0 12 0.7 0.001");
+ // cout << OutputFiles[1] << endl;
 
-vector<string> inputStrings;
-inputStrings.push_back("/mnt/c/Users/JonnyM/Desktop/GravityWaves/Fast_Self-Forced_Inspirals/output/Inspiral_NIT_p12_e0.7_q0.001.dat");
-inputStrings.push_back("/mnt/c/Users/JonnyM/Desktop/GravityWaves/Fast_Self-Forced_Inspirals/output/Inspiral_Full_p12_e0.7_q0.001.dat");
+for ( int i = 0; i < outFullStringsList.size(); i++){
+	cout << OutputFiles[i] << endl;
+}
 
-string outputFile = "testOutput.dat";
 
-GetErrors(inputStrings,outputFile);
+for (int i = 0; i < FullStringsList.size(); i++){
+	string run_pre = fileloc + NITStringsList[i];
+	cout << run_pre << endl;
+	const char* run = run_pre.c_str();
+	system(run);
+	//system("/mnt/c/Users/JonnyM/Desktop/GravityWaves/Fast_Self-Forced_Inspirals/NIT_inspiral -n0 12 0.7 0.001");
+	run_pre = fileloc + FullStringsList[i];
+	cout << run_pre << endl;
+	run = run_pre.c_str();
+	system(run);
+	//system("/mnt/c/Users/JonnyM/Desktop/GravityWaves/Fast_Self-Forced_Inspirals/NIT_inspiral -f0 12 0.7 0.001");
+	vector<string> inputStrings;
+	inputStrings.push_back(fileloc + outNITStringsList[i]);
+	inputStrings.push_back(fileloc + outFullStringsList[i]);
+
+	//inputStrings.push_back("/mnt/c/Users/JonnyM/Desktop/GravityWaves/Fast_Self-Forced_Inspirals/output/Inspiral_NIT_p12_e0.7_q0.001.dat");
+	//inputStrings.push_back("/mnt/c/Users/JonnyM/Desktop/GravityWaves/Fast_Self-Forced_Inspirals/output/Inspiral_Full_p12_e0.7_q0.001.dat");
+	//outputFile = "testOutputA.dat";
+
+	GetErrors(inputStrings,OutputFiles[i]); // PROBLEM - Only saving the first file to the output folder??
+
+	//GetErrors(inputStrings,outputFile);
+	// fileloc = "/mnt/c/Users/JonnyM/Desktop/GravityWaves/Fast_Self-Forced_Inspirals/";
+	cout << " " << endl;
+	}
+
 } 
 
 // ----------------------------- Import the Inspiral Data -----------------------------------------
 
 void GetErrors(vector<string> insp_filenames, string out_filename){
+	ofstream fout;
+	
 	fout.precision(OUT_PREC);
 	cout.precision(OUT_PREC);
 	fout << scientific;
@@ -205,6 +316,7 @@ for ( int j = 0; j <= 1; j++ )
 		
 		if(test == 0) test = 1;
 		else if(v <= vs.back()) break;
+		else if(chi <= chis.back()) break;
 		
 		vs.push_back(v);
 		chis.push_back(chi);
@@ -259,6 +371,7 @@ if(j == 0){
 	Full_interp.push_back(new Interpolant(vs,es));
 	Full_interp.push_back(new Interpolant(vs,ts));
 	Full_interp.push_back(new Interpolant(vs,phis));
+	Full_interp.push_back(new Interpolant(chis,vs));
 }
 
 /* Remember:
@@ -324,13 +437,20 @@ double M_solar, Deltat_sec;
 
 double t_max = i_max*Deltat;
 double chit, pt, et, vt, tt, phit;
-vector<double> t_dense, tt_dense, v_dense, vt_dense, chit_dense;
+vector<double> t_dense, tt_dense, v_dense, vt_dense, chit_dense, chi_vec;
 	
 	v = vs[0];
-	chit = chits[0];
+	if (chits.back() > chis.back()){
+		chi_vec = chis;
+	} else if (chits.back() < chis.back()){
+		chi_vec = chits;
+	}
 
-	while(v < vs[vs.size() - 1] && chit < chits[chits.size() -1]){
-		
+	chit = chi_vec[0];
+
+	//cout << "hi" << endl;
+	while(v < vs[vs.size() - 1] && chit < chi_vec[chi_vec.size() -1]){
+		v = Full_interp[5]->eval(chit);
 		vt = NIT_interp[7]->eval(chit);
 		p = Full_interp[1]->eval(v);
 		e = Full_interp[2]->eval(v);
@@ -349,8 +469,8 @@ vector<double> t_dense, tt_dense, v_dense, vt_dense, chit_dense;
 		tt_dense.push_back(tt);
 		
 		if(t > t_max) break;	
-		v += 2.0*M_PI/10.;
-		chit = NIT_interp[0]->eval(v);	
+		// v += 2.0*M_PI/10.;
+		chit += 2.0*M_PI/10.;// NIT_interp[0]->eval(v);	
 	}
 
 	 // cout << "hey" << endl;

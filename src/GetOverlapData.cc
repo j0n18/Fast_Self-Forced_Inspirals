@@ -133,7 +133,7 @@ int main(int argc, char* argv[])
     }
 
 
-string fileloc, NITfile0, Fullfile0, NITfile, Fullfile, outNITfile0, outFullfile0, outNITfile, outFullfile,NITfile1, Fullfile1;
+string fileloc, NITfile0, Fullfile0, NITfile, Fullfile, outNITfile0, outFullfile0, outNITfile, outFullfile;
 vector<string> NITStringsList, FullStringsList, outNITStringsList, outFullStringsList;
 
 fileloc = "/mnt/c/Users/JonnyM/Desktop/GravityWaves/Fast_Self-Forced_Inspirals/";
@@ -142,16 +142,13 @@ fileloc = "/mnt/c/Users/JonnyM/Desktop/GravityWaves/Fast_Self-Forced_Inspirals/"
 NITfile0 = "NIT_inspiral -n0 10 0.1 0.001";
 Fullfile0 = "NIT_inspiral -f0 10 0.1 0.001"; // The first part should be NIT_inspiral for directory reasons. -f0 signifies Full.
 
-NITfile1 = "NIT_inspiral -n 10 0.1 0.001";
-Fullfile1 = "NIT_inspiral -f 10 0.1 0.001";
-
 double dp = 1; // make 1
-double de = 0.08;
-int pmax = 11; // make 14 // p = 12 does not work for -n and -f
-int pmin = 10; // make 8
-double emax = 0.20; // make 0.75; This will be rounded to 0.7
+double de = 0.1;
+int pmax = 14; // make 14
+int pmin = 8; // make 8
+double emax = 0.75; // This will be rounded to 0.7
 double emin = 0.1; // make 0.1
-double floatValue, in_val, in_val1,in_val2;
+double floatValue, in_val, in_val1;
 
 string half = ".5"; // not going to need
 string in_str, sub, sub1;
@@ -163,7 +160,7 @@ vector<string> OutputFiles;
 string outputFile, newoutputFile,newoutputFile_e;
 
 string outputFile0 = "output/ErrorData_p10_e0.1_q0.001.dat";
-
+string outputFile01 = "output/ErrorData_p8_e0.1_q0.001.dat";
 outputFile = outputFile0;
 
 outNITfile0 = "output/Inspiral_NIT_p12_e0.7_q0.001.dat";
@@ -171,24 +168,8 @@ outFullfile0 = "output/Inspiral_Full_p12_e0.7_q0.001.dat";
 
 outFullfile = outFullfile0;
 outNITfile = outNITfile0;
-int reg_counter = 0;
 
-// -----------------------------
-double reg = 0;
-// -----------------------------
-
-if (reg == 0){
-
-	Fullfile = Fullfile1;
-	NITfile = NITfile1;
-
-} else
-{
-	Fullfile = Fullfile0;
-	NITfile = NITfile0;
-}
-
-for ( int i = 1; i <= floor((pmax - pmin)*(1/dp)); i++) // eventually include evething upt to and including GetErrors(inputStrings,outputFile); in this loop
+for ( int i = 0; i <= floor((pmax - pmin)*(1/dp)); i++) // eventually include evething upt to and including GetErrors(inputStrings,outputFile); in this loop
 {
 	in_val = pmin + i*dp;
 	in_val1 = in_val;
@@ -203,75 +184,24 @@ for ( int i = 1; i <= floor((pmax - pmin)*(1/dp)); i++) // eventually include ev
 		sub1 = in_str.substr(0,2);
 	}
 
-	if (reg == 0){
-
-		newNIT = NITfile.replace(16,2,sub);
-		newFull = Fullfile.replace(16,2,sub);
-
-	}
+	newNIT = NITfile.replace(17,2,sub);
+	newFull = Fullfile.replace(17,2,sub);
+	newoutNIT = outNITfile.replace(21,2,sub1);
+	newoutFull = outFullfile.replace(22,2,sub1);
+	newoutputFile = outputFile.replace(18,2,sub1);	
 	
-	else{
-
-		newNIT = NITfile.replace(17,2,sub);
-		newFull = Fullfile.replace(17,2,sub);
-
-	}
-
-		newoutNIT = outNITfile.replace(21,2,sub1);
-		newoutFull = outFullfile.replace(22,2,sub1);
-		newoutputFile = outputFile.replace(18,2,sub1);	
 
 	for ( int j = 0; j <= floor((emax - emin)*(1/de)); j++) // eventually include evething upt to and including GetErrors(inputStrings,outputFile); in this loop
 	{	
 		in_val = emin + j*de;
-		in_val2 = in_val;
-		//cout << in_val << endl;
 		in_str = to_string(in_val);
+		sub = in_str.substr(0,3);
 
-		if (reg == 0){
-			sub = in_str.substr(0,4);
-		}
-		else{
-			sub = in_str.substr(0,3);
-		}
-
-		if (reg == 0){
-
-			newNIT_e = newNIT.replace(21,4,sub);
-			newFull_e = newFull.replace(21,4,sub);
-
-		if (reg_counter == 0){
-			reg_counter += 1;
-			newNIT_e = newNIT.insert(25," ");
-			newFull_e = newFull.insert(25," ");	
-		}
-
-		}
-		else{
-
-			newNIT_e = newNIT.replace(22,3,sub);
-			newFull_e = newFull.replace(22,3,sub);
-
-		}
-
-			newoutNIT_e = newoutNIT.replace(25,3,sub);
-			newoutFull_e = newoutFull.replace(26,3,sub);
-			newoutputFile_e = newoutputFile.replace(22,3,sub);
-
-		if (reg == 0){
-			newoutNIT_e.erase(28,1);
-			newoutFull_e.erase(29,1);
-			newoutputFile_e.erase(25,1);
-		}
-
-		if (reg == 0 && fmod(in_val2,0.1) != 0)
-		{
-			newoutNIT_e.replace(27,2,sub.substr(2,3));
-			newoutFull_e.replace(28,2,sub.substr(2,3));
-			newoutputFile_e.replace(24,2,sub.substr(2,3));
-
-		}
-
+		newNIT_e = newNIT.replace(22,3,sub);
+		newFull_e = newFull.replace(22,3,sub);
+		newoutNIT_e = newoutNIT.replace(25,3,sub);
+		newoutFull_e = newoutFull.replace(26,3,sub);
+		newoutputFile_e = newoutputFile.replace(22,3,sub);
 
 		if (in_val1 < 10){
 		newoutNIT_e.erase(24,1);
@@ -293,20 +223,8 @@ for ( int i = 1; i <= floor((pmax - pmin)*(1/dp)); i++) // eventually include ev
 
 	string in_str, sub, sub1;
 	string newNIT, newFull, newNIT_e, newFull_e, newoutNIT, newoutFull, newoutNIT_e, newoutFull_e, newoutputFile, newoutputFile_e;
-
-	if (reg == 0){
-
-		Fullfile = Fullfile1;
-		NITfile = NITfile1;
-
-	}
-	else{
-
-		Fullfile = Fullfile0;
-		NITfile = NITfile0;
-
-	}
-
+	Fullfile = Fullfile0;
+	NITfile = NITfile0;
 	outFullfile = outFullfile0;
 	outNITfile = outNITfile0;
 	outputFile = outputFile0;
@@ -316,21 +234,11 @@ cout << "Running GetErrorData.cc"<< endl;
  // cout << OutputFiles[1] << endl;
 
 for ( int i = 0; i < outFullStringsList.size(); i++){
-	cout << outNITStringsList[i] << endl;
-	cout << outFullStringsList[i] << endl;
 	cout << OutputFiles[i] << endl;
 }
 
 
 for (int i = 0; i < FullStringsList.size(); i++){
-
-	if (reg == 0){
-
-		system("/mnt/c/Users/JonnyM/Desktop/GravityWaves/Fast_Self-Forced_Inspirals/NIT_inspiral -c");
-		system("/mnt/c/Users/JonnyM/Desktop/GravityWaves/Fast_Self-Forced_Inspirals/NIT_inspiral -d");
-		
-	} 
-
 	string run_pre = fileloc + NITStringsList[i];
 	cout << run_pre << endl;
 	const char* run = run_pre.c_str();

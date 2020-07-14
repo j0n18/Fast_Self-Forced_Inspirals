@@ -1409,31 +1409,17 @@ void compute_waveform(string insp_filename, string out_filename){
 			hcross.push_back(h.imag());
 
 		} else if (mode == T_WAVEFORM_NIT){
-			if (i == 0){
-				continue; // if we are on the initial iteration, pass to the next (for delta quantities)
-			}
-			else{
-				t_b = (i-1)*Deltat;
-				v_before = v_interp.eval(t_b);
-				t_before = t_interp.eval(v_before); // t-tilde
 
-				p_before = p_interp.eval(v_before);
-				e_before = e_interp.eval(v_before);
+			tt = t_interp.eval(v); // this is t tilde since we are not applying the inverse transform
 
-				phi_before = phi_interp.eval(v_before); // again keep phi-tilde for -t -n
+			w_r = 1 / t_interp.eval_deriv(v);
+			w_phi = phi_interp.eval_deriv(v) * w_r;
 
-				//Calculate the omega_phi and omega_r for this iteration:
+			// loop to sum all values over the n_modes to find each HTeuk value:
+			// Calculate the corresponding Almn for this iteration: (loop these in such that it will
+			// generate each appropriate a during the summation process)
 
-				tt = t_interp.eval(v); // this is t tilde since we are not applying the inverse transform
-
-				w_r = (v - v_before)/(tt - t_before);
-				w_phi = (phi-phi_before)/(tt-t_before);
-
-				// loop to sum all values over the n_modes to find each HTeuk value:
-				// Calculate the corresponding Almn for this iteration: (loop these in such that it will 
-				// generate each appropriate a during the summation process)
-
-				Complex sum;
+			Complex sum;
 
 				for (int it = 0; it < N_Interp_re.size(); it++){
 					Ar = N_Interp_re[it]->eval(p-2*e, e);
@@ -1449,7 +1435,7 @@ void compute_waveform(string insp_filename, string out_filename){
 
 				HTeuk_re.push_back(HTeuk.real());
 				HTeuk_im.push_back(HTeuk.imag());
-			}
+
 		} else if (mode == T_WAVEFORM_FULL){
 			
 			// ------------------------ j(v) and j related calculations --------------------------- //

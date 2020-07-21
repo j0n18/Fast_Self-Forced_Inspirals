@@ -68,12 +68,12 @@ typedef complex<double> Complex;
 using namespace libconfig;
 Config cfg;
 
-// Instantiate the functions:
-void GetErrors(vector<string> insp_filenames, string out_filename);
-double Tr(double p, double e, double v);
+//-------------------------------- Instantiate functions ----------------------------------------- //
+vector<string> InputStrings(int which, int reg); //, int pmin, int pmax, int emin, int emax
+void GetErrors(vector<string> NIT_output_filenames, vector<string> Full_output_filenames, vector<string> Error_out_filenames);
+vector<double> ImportData(string insp_filename,	double mode, int which_param);
 double Z0t(double p, double e, double v);
 double Z0phi(double p, double e, double v);
-double Phir(double p, double e);
 double EllipticK(double k);
 double EllipticF(double phi, double k);
 double EllipticE(double k);
@@ -81,10 +81,10 @@ double EllipticEIncomp(double phi, double k);
 double EllipticPi(double n, double k);
 double EllipticPiIncomp(double n, double phi, double k);
 
-// ----------------------------- Generate the Inspiral Data ---------------------------------------
+
 int main(int argc, char* argv[])
 {
-
+ cout << "Running GetErrorData.cc" << endl;
 // Check the config file exists and is well formatted
     try{
 		 cfg.readFile("config/parameters.cfg");
@@ -96,35 +96,82 @@ int main(int argc, char* argv[])
   	    exit(0);
     }
 
+// ----------------------------- Generate the Inspiral Data --------------------------------------- //
+
+// Acquire command strings and output file strings:
+cout << "Building command strings for NIT and Full inspirals" << endl;
+
+string fileloc = "/mnt/c/Users/JonnyM/Desktop/GravityWaves/Fast_Self-Forced_Inspirals/";
+int reg = 1;
+
+
+vector<string> NITcommands = InputStrings(0,reg);
+vector<string> Fullcommands = InputStrings(1,reg);
+vector<string> NIToutputFiles = InputStrings(2,reg);
+vector<string> FulloutputFiles = InputStrings(3,reg);
+vector<string> OutputFiles = InputStrings(4,reg);
+
+// Check: 
+//cout << NITcommands[0]<< endl;
+//cout << Fullcommands[0]<< endl;
+//cout << NIToutputFiles[0]<< endl;
+//cout << FulloutputFiles[0]<< endl;
+//cout << OutputFiles[0]<< endl;
+
+//cout << "testing ImportData" << endl;
+//string yoyo = fileloc + FulloutputFiles[0];
+//vector<double> test_vec = ImportData(yoyo,FULL_INSPIRAL,0); 
+//cout << test_vec[0] << endl;
+
+
+for ( int i = 0; i < OutputFiles.size();i++){
+	cout << NIToutputFiles[i] << endl;
+}
+cout << " " << endl;
+
+// Execute commands:
+cout << "Executing commands for NIT anf Full inspirals" << endl;
+for (int i = 0; i < Fullcommands.size(); i++){
+
+	string run_pre = fileloc + NITcommands[i];
+	cout << run_pre << endl;
+	const char* run = run_pre.c_str();
+	system(run);
+
+	run_pre = fileloc + Fullcommands[i];
+	cout << run_pre << endl;
+	run = run_pre.c_str();
+	system(run);
+
+}
+
+cout << "Calling GetErrors() ..." << endl;
+cout << " " << endl;
+	GetErrors(NIToutputFiles, FulloutputFiles, OutputFiles); 
+
+}
+
+
+// ---------------------------------------- Functions -------------------------------------------------- //
+
+//vector<string> ImportStrings(string NITfile0, string Fullfile0, string outNITfile0, string outFullfile0, string outputFile0, int reg, double dp, double de, int pmax, int pmin, double emax, double emin){
+vector<string> InputStrings(int which, int reg){
 string fileloc, NITfile0, Fullfile0, NITfile, Fullfile, outNITfile0, outFullfile0, outNITfile, outFullfile,NITfile1, Fullfile1;
 vector<string> NITStringsList, FullStringsList, outNITStringsList, outFullStringsList;
 
 fileloc = "/mnt/c/Users/JonnyM/Desktop/GravityWaves/Fast_Self-Forced_Inspirals/";
 
-int which_q = 2;
-
  // Initial strings
-if ( which_q == 0){
-NITfile0 = "NIT_inspiral -n0 10 0.1 0.00001";
-Fullfile0 = "NIT_inspiral -f0 10 0.1 0.00001"; // The first part should be NIT_inspiral for directory reasons. -f0 signifies Full.
-NITfile1 = "NIT_inspiral -n 10 0.1 0.00001";
-Fullfile1 = "NIT_inspiral -f 10 0.1 0.00001";
-} else if (which_q == 1){
-NITfile0 = "NIT_inspiral -n0 10 0.1 0.0001";
-Fullfile0 = "NIT_inspiral -f0 10 0.1 0.0001"; // The first part should be NIT_inspiral for directory reasons. -f0 signifies Full.
-NITfile1 = "NIT_inspiral -n 10 0.1 0.0001";
-Fullfile1 = "NIT_inspiral -f 10 0.1 0.0001";	
-} else if (which_q == 2){
 NITfile0 = "NIT_inspiral -n0 10 0.1 0.001";
 Fullfile0 = "NIT_inspiral -f0 10 0.1 0.001"; // The first part should be NIT_inspiral for directory reasons. -f0 signifies Full.
-NITfile1 = "NIT_inspiral -n 10 0.1 0.001";
-Fullfile1 = "NIT_inspiral -f 10 0.1 0.001";	
-}
 
-double dp = 1; // make 1
+NITfile1 = "NIT_inspiral -n 10 0.1 0.001";
+Fullfile1 = "NIT_inspiral -f 10 0.1 0.001";
+
+double dp = 1; 
 double de = 0.1;
 int pmax = 12; // make 14 // p > 11 does not work for -n and (reliably) for -f
-int pmin = 11; // make 8
+int pmin = 10; // make 8
 double emax = 0.75; // make 0.75; This will be rounded to 0.7
 double emin = 0.1; // make 0.1
 double floatValue, in_val, in_val1,in_val2;
@@ -136,35 +183,20 @@ NITfile = NITfile0;
 
 vector<string> OutputFiles;
 string outputFile, newoutputFile,newoutputFile_e;
-string outputFile0;
 
-if ( which_q == 0){
-	outputFile0 = "output/ErrorData_p10_e0.1_q0.00001.dat";
-} else if (which_q == 1){
-	outputFile0 = "output/ErrorData_p10_e0.1_q0.0001.dat";
-}else if (which_q == 2){
-	outputFile0 = "output/ErrorData_p10_e0.1_q0.001.dat";
-}
+string outputFile0 = "output/ErrorData_p10_e0.1_q0.001.dat";
 
 outputFile = outputFile0;
 
-if (which_q == 0){
-	outNITfile0 = "output/Inspiral_NIT_p12_e0.7_q1e-05.dat";
-	outFullfile0 = "output/Inspiral_Full_p12_e0.7_q1e-05.dat";
-} else if (which_q == 1){
-	outNITfile0 = "output/Inspiral_NIT_p12_e0.7_q0.0001.dat";
-	outFullfile0 = "output/Inspiral_Full_p12_e0.7_q0.0001.dat";	
-} else if (which_q == 2){
-	outNITfile0 = "output/Inspiral_NIT_p12_e0.7_q0.001.dat";
-	outFullfile0 = "output/Inspiral_Full_p12_e0.7_q0.001.dat";	
-}
+outNITfile0 = "output/Inspiral_NIT_p12_e0.7_q0.001.dat";
+outFullfile0 = "output/Inspiral_Full_p12_e0.7_q0.001.dat";
 
 outFullfile = outFullfile0;
 outNITfile = outNITfile0;
 int reg_counter = 0;
 
 // -----------------------------
-double reg = 1;
+
 // -----------------------------
 
 if (reg == 0){
@@ -177,7 +209,6 @@ if (reg == 0){
 	Fullfile = Fullfile0;
 	NITfile = NITfile0;
 }
-
 
 for ( int i = 1; i <= floor((pmax - pmin)*(1/dp)); i++) // eventually include evething upt to and including GetErrors(inputStrings,outputFile); in this loop
 {
@@ -218,7 +249,7 @@ for ( int i = 1; i <= floor((pmax - pmin)*(1/dp)); i++) // eventually include ev
 		in_val2 = in_val;
 		
 		in_str = to_string(in_val);
-
+		
 		if (reg == 0){
 			sub = in_str.substr(0,4);
 		}
@@ -303,74 +334,148 @@ for ( int i = 1; i <= floor((pmax - pmin)*(1/dp)); i++) // eventually include ev
 	outputFile = outputFile0;
 }
 
+vector<string> out;
 
+if (which == 0){
 
-cout << "Running GetErrorData.cc"<< endl;
+out = NITStringsList;
 
-for ( int i = 0; i < outFullStringsList.size(); i++){
-	cout << outNITStringsList[i] << endl;
-	cout << outFullStringsList[i] << endl;
-	cout << OutputFiles[i] << endl;
+} else if (which == 1){
+
+out = FullStringsList;
+
+}else if (which == 2){
+
+out = outNITStringsList;
+
+}else if (which == 3){
+
+out = outFullStringsList;
+
+}else if (which == 4){
+
+out = OutputFiles;
+
 }
 
+return out;
 
-for (int i = 0; i < FullStringsList.size(); i++){
+}
 
-	string run_pre = fileloc + NITStringsList[i];
-	cout << run_pre << endl;
-	const char* run = run_pre.c_str();
-	system(run);
-	//system("/mnt/c/Users/JonnyM/Desktop/GravityWaves/Fast_Self-Forced_Inspirals/NIT_inspiral -n0 12 0.7 0.001");
-	run_pre = fileloc + FullStringsList[i];
-	cout << run_pre << endl;
-	run = run_pre.c_str();
-	system(run);
-	//system("/mnt/c/Users/JonnyM/Desktop/GravityWaves/Fast_Self-Forced_Inspirals/NIT_inspiral -f0 12 0.7 0.001");
-	vector<string> inputStrings;
-	inputStrings.push_back(fileloc + outNITStringsList[i]);
-	inputStrings.push_back(fileloc + outFullStringsList[i]);
+//GetErrors:
 
-	GetErrors(inputStrings,OutputFiles[i]); 
+void GetErrors(vector<string> NIT_output_filenames, vector<string> Full_output_filenames, vector<string> Error_out_filenames){
+string fileloc = "/mnt/c/Users/JonnyM/Desktop/GravityWaves/Fast_Self-Forced_Inspirals/";
+vector<double> chis, ps, es, vs, ts, phis, chits, pts, ets, vts, tts, phits, w_rs, w_phis,w_rts,w_phits;
+vector<Interpolant*> NIT_interp, Full_interp;
+string inNIT, inFull, Error_out_filename;
+ofstream fout; // this inside the for loop or here?
 
-	cout << " " << endl;
+fout.precision(OUT_PREC);
+cout.precision(OUT_PREC);
+fout << scientific;
+cout << scientific;
+
+for ( int i = 0; i < NIT_output_filenames.size(); i++){
+	
+	inFull = fileloc + Full_output_filenames[i];
+	inNIT = fileloc + NIT_output_filenames[i];
+
+	chis = ImportData(inFull,FULL_INSPIRAL,0);
+	ps = ImportData(inFull,FULL_INSPIRAL,1);
+	es = ImportData(inFull,FULL_INSPIRAL,2);
+	vs = ImportData(inFull,FULL_INSPIRAL,3);
+	ts = ImportData(inFull,FULL_INSPIRAL,4);
+	phis = ImportData(inFull,FULL_INSPIRAL,5);
+	w_rs = ImportData(inFull,FULL_INSPIRAL,6);
+	w_phis = ImportData(inFull,FULL_INSPIRAL,7);
+
+	chits = ImportData(inNIT,NIT_INSPIRAL,0);
+	pts = ImportData(inNIT,NIT_INSPIRAL,1);
+	ets = ImportData(inNIT,NIT_INSPIRAL,2);
+	vts = ImportData(inNIT,NIT_INSPIRAL,3);
+	tts = ImportData(inNIT,NIT_INSPIRAL,4);
+	phits = ImportData(inNIT,NIT_INSPIRAL,5);
+	w_rts = ImportData(inNIT,NIT_INSPIRAL,6);
+	w_phits = ImportData(inNIT,NIT_INSPIRAL,7);
+
+	NIT_interp.push_back(new Interpolant(vts,chits));
+	NIT_interp.push_back(new Interpolant(chits,pts));
+	NIT_interp.push_back(new Interpolant(chits,ets));
+	NIT_interp.push_back(new Interpolant(chits,tts));
+	NIT_interp.push_back(new Interpolant(chits,phits));
+	NIT_interp.push_back(new Interpolant(chits,w_rts));
+	NIT_interp.push_back(new Interpolant(chits,w_phits));
+	NIT_interp.push_back(new Interpolant(chits,vts));
+
+	Full_interp.push_back(new Interpolant(vs,chis));
+	Full_interp.push_back(new Interpolant(chis,ps));
+	Full_interp.push_back(new Interpolant(chis,es));
+	Full_interp.push_back(new Interpolant(chis,ts));
+	Full_interp.push_back(new Interpolant(chis,phis));
+	Full_interp.push_back(new Interpolant(chis,vs));
+
+	double DeltaChi = 2.0*M_PI/10.;
+	double chi_max;
+	if (chits.back() < chis.back()){
+		chi_max = chits.back();
+	} else if (chits.back() > chis.back()){
+		chi_max = chis.back();
 	}
-}
 
-// ----------------------------- Import the Inspiral Data -----------------------------------------
+	double j_max = chi_max/DeltaChi;
+	double chit,pt,et,vt,tt,phit;
+	double chi,p,e,v,t,phi,w_r,w_phi;
+	double dwtR,dwtPhi,dphi,dv;
 
-void GetErrors(vector<string> insp_filenames, string out_filename){
-	ofstream fout;
+	// for now:
+	double M  = 1; // This likely must change 
+	Error_out_filename = Error_out_filenames[i];
 
-	fout.precision(OUT_PREC);
-	cout.precision(OUT_PREC);
-	fout << scientific;
-	cout << scientific;
+	fout.open(Error_out_filename); // fout opens here, is populated in the sub loop and closed at the beginning of the next iteration
 
-	// Input: the name of eht NIT file and the name of the Full file
-	vector<double> chis, ps, es, vs, ts, phis, chits, pts, ets, vts, tts, phits;
-		
+	for(int j = 0; j < j_max; j++)
+	{
+
+	chit = j*DeltaChi;
+
+	v = Full_interp[5]->eval(chit);
+	p = Full_interp[1]->eval(chit);
+	e = Full_interp[2]->eval(chit);
+	t = Full_interp[3]->eval(chit);
+	phi = Full_interp[4]->eval(chit);
+
+	vt = NIT_interp[7]->eval(chit);
+	pt = NIT_interp[1]->eval(chit);
+	et = NIT_interp[2]->eval(chit);
+	tt = NIT_interp[3]->eval(chit);
+	phit = NIT_interp[4]->eval(chit);
+	w_r = NIT_interp[5]->eval(chit);
+	w_phi = NIT_interp[6]->eval(chit);
+
+	dwtR = w_r*abs(((1/M)*((tt-Z0t(pt,et,vt)) - t)));
+	dwtPhi = w_phi*abs(((1/M)*((tt-Z0t(pt,et,vt)) - t)));
+	dphi = abs((phit-Z0phi(pt,et,vt)) - phi);
+	dv = abs(vt-v);
+
+	fout << chit << " " << dwtR << " " << dwtPhi << " " << dphi << " " << dv << endl;
+
+	}// end of sub loop
+
+} // end of outer loop
+
+} // end of GetErrorData
+
+// Import data:
+vector<double> ImportData(string insp_filename,	double mode, int which_param){
+	//ofstream fout; \\ this doesnt seem like it should be here
+	
 	string insp_string;
 	
 	double chi, p, e, v, t, phi;
-	double mode = NIT_INSPIRAL;
 
-	vector<vector<double>> NIT, Full;
-	vector<Interpolant*> NIT_interp, Full_interp;
+	vector<double> chis, ps, es, vs, ts, phis;
 
-for ( int j = 0; j <= 1; j++ )
-{
-	vector<double> chis, ps, es, vs, ts, phis, chits, pts, ets, vts, tts, phits;
-	// First pass for NIT, second pass for Full:
-	//Store in the same order read in from file: chi, p, e, v, t, phi
-
-	string insp_filename = insp_filenames[j];
-
-	if (j == 0){
-		mode = NIT_INSPIRAL;
-	}else if (j == 1){
-		mode = FULL_INSPIRAL;
-	}
-	
 	// Check if the associated inspiral trajectory file exists
 	ifstream insp(insp_filename);
 	if(!insp){
@@ -403,167 +508,64 @@ for ( int j = 0; j <= 1; j++ )
 		if(test == 0) test = 1;
 		else if(v <= vs.back()) break;
 		else if(chi <= chis.back()) break;
-		
-		vs.push_back(v);
+
 		chis.push_back(chi);
 		ps.push_back(p);
 		es.push_back(e);
+		vs.push_back(v);
 		ts.push_back(t);
 		phis.push_back(phi);
-
 
 	}
 
 vector<double> w_rs, w_phis;
 
 for (int i = 1; i < vs.size(); i++){
-	w_rs.push_back((vs[i]-vs[i-1])/(ts[i]-ts[i-1]));
-	w_phis.push_back((phis[i]-phis[i-1])/(ts[i]-ts[i-1]));
-}
-double ccount = 0;
 
-if(j == 0){
-	NIT.push_back(chis);
-	NIT_interp.push_back(new Interpolant(vs,chis));
-	NIT_interp.push_back(new Interpolant(chis,ps));
-	NIT_interp.push_back(new Interpolant(chis,es));
-	NIT_interp.push_back(new Interpolant(chis,ts));
-	NIT_interp.push_back(new Interpolant(chis,phis));
-	NIT_interp.push_back(new Interpolant(chis,w_rs));
-	NIT_interp.push_back(new Interpolant(chis,w_phis));
-	NIT_interp.push_back(new Interpolant(chis,vs));
-
-} else if (j == 1){
-	Full.push_back(chis);
-	Full_interp.push_back(new Interpolant(vs,chis));
-	Full_interp.push_back(new Interpolant(chis,ps));
-	Full_interp.push_back(new Interpolant(chis,es));
-	Full_interp.push_back(new Interpolant(chis,ts));
-	Full_interp.push_back(new Interpolant(chis,phis));
-	Full_interp.push_back(new Interpolant(chis,vs));
-}
-
-/* Remember:
-
-chit_interp = NIT_interp[0];
-pt_interp = NIT_interp[1];
-et_interp = NIT_interp[2];
-tt_interp = NIT_interp[3];
-phit_interp = NIT_interp[4];
-w_rt_interp = NIT_interp[5];
-w_phit_interp = NIT_interp[6];
-vt_interp = NIT_interp[7];
-
-chi_interp = Full_interp[0];
-p_interp = Full_interp[1];
-e_interp = Full_interp[2];
-t_interp = Full_interp[3];
-phi_interp = Full_interp[4];
-*/
-
-}
-
-chis = Full[0];
-chits = NIT[0];
-
-int i_max;
-double M_solar, Deltat_sec;
-	try{
-		M_solar 		= cfg.lookup("M_solar");		// Mass of the primary in solar masses}
- 	}catch(const SettingNotFoundException &nfex){
-   		cerr << "'M_solar' setting missing from configuration file." << endl; exit(0);
- 	}
-	
-	try{
-		Deltat_sec 	= cfg.lookup("Deltat_sec");		// Time step in seconds
-	}catch(const SettingNotFoundException &nfex){
-   		cerr << "'Delta_sec' setting missing from configuration file." << endl; exit(0);
- 	}
-	
-	try{
-		i_max 	= cfg.lookup("i_max");				// The number of time steps to take
-	}catch(const SettingNotFoundException &nfex){
-   		cerr << "'i_max' setting missing from configuration file." << endl; exit(0);
- 	}
-			 	
-	double Msolar_sec	= 4.9253908380897e-6;	// Solar mass in seconds				
-	double M 			= M_solar * Msolar_sec;	// Mass of the primary in seconds
-	double Deltat		= Deltat_sec/M;			// Time step in units of M	
-
-double t_max = i_max*Deltat;
-double chit, pt, et, vt, tt, phit;
-vector<double> t_dense, tt_dense, v_dense, vt_dense, chit_dense;
-double chi_max;
-
-	if (chits.back() > chis.back()){
-		chi_max = chis.back();
-	} else if (chits.back() < chis.back()){
-		chi_max = chits.back();
-	}
-
-	double DeltaChi = 2.0*M_PI/10.;
-	i_max = chi_max/DeltaChi;
-
-	double dwtR,dwtPhi, dphi, dv;
-	double w_r, w_phi;
-
-	fout.open(out_filename);
-	
-	for(int i = 0; i < i_max; i ++)
+	if (which_param == 6)
 	{
-
-	chit = i*DeltaChi;
-	chit_dense.push_back(chit);
-
-	v = Full_interp[5]->eval(chit);
-	p = Full_interp[1]->eval(chit);
-	e = Full_interp[2]->eval(chit);
-	t = Full_interp[3]->eval(chit);
-	phi = Full_interp[4]->eval(chit);
-
-	vt = NIT_interp[7]->eval(chit);
-	pt = NIT_interp[1]->eval(chit);
-	et = NIT_interp[2]->eval(chit);
-	tt = NIT_interp[3]->eval(chit);
-	phit = NIT_interp[4]->eval(chit);
-	w_r = NIT_interp[5]->eval(chit);
-	w_phi = NIT_interp[6]->eval(chit);
-
-// Big for loop for calculating all the error values
-	dwtR = w_r*abs(((1/M)*((tt-Z0t(pt,et,vt)) - t)));
-	dwtPhi = w_phi*abs(((1/M)*((tt-Z0t(pt,et,vt)) - t)));
-	dphi = abs((phit-Z0phi(pt,et,vt)) - phi);
-	dv = abs(vt-v);
-
-	if (i == 0)
+		w_rs.push_back((vs[i]-vs[i-1])/(ts[i]-ts[i-1]));
+	} 
+	else if (which_param == 7)
 	{
-		cout << "Outputting error data to " << out_filename << endl;
+		w_phis.push_back((phis[i]-phis[i-1])/(ts[i]-ts[i-1]));
 	}
-
-	fout << chit << " " << dwtR << " " << dwtPhi << " " << dphi << " " << dv << endl;
-
-	}// end of calculation and output loop
-
-} // End of GetErrors
-
-// ------------------------------- Error Functions ----------------------------------- //
-
-//Tr: --- For this one we need elliptical functions: EllipticK, EllipticPi,EllipticF
-double Tr(double p, double e, double v)
-{
-	return (2*Sqrt((-4*Power(e,2) + Power(-2 + p,2))/(-6 + 2*e + p))*
-     ((-1 - e)*(2 + 2*e - p)*(-4 + p)*p*(-6 + 2*e + p)*EllipticE((4*e)/(-6 + 2*e + p)) + 
-       (1 + e)*(2 + 2*e - p)*p*(36 + 2*Power(e,2)*(-2 + p) + (-14 + p)*p)*EllipticK((4*e)/(-6 + 2*e + p)) + 
-       2*(6 + 2*e - p)*((-2 - 2*e + p)*(8 + p - Power(p,2) + Power(e,2)*(-8 + 3*p))*
-           EllipticPi((2*e*(-4 + p))/((1 + e)*(-6 + 2*e + p)),(4*e)/(-6 + 2*e + p)) - 
-          (-1 + e)*Power(1 + e,2)*Power(-4 + p,2)*EllipticPi((16*e)/(12 + 8*e - 4*Power(e,2) - 8*p + Power(p,2)),
-            (4*e)/(-6 + 2*e + p)))))/((-1 + e)*Power(1 + e,2)*(2 + 2*e - p)*Power(-4 + p,2));
 }
 
-//Phir:
-double Phir(double p, double e)
-{
-	return 4*Sqrt(p/(-6 + 2*e + p))*EllipticK((4*e)/(-6 + 2*e + p));
+vector<double> out;
+
+if (which_param == 0){
+
+	out = chis;
+
+}else if (which_param == 1){
+
+		out = ps;
+
+}else if (which_param == 2){
+
+		out = es;
+
+}else if (which_param == 3){
+
+		out = vs;
+
+}else if (which_param == 4){
+
+		out = ts;
+}
+else if (which_param == 5){
+		out = phis;
+}
+else if (which_param == 6){
+		out = w_rs;
+}
+else if (which_param == 7){
+		out = w_phis;
+}
+
+return out;
+
 }
 
 //Z0t: takes tilded values as arguments
@@ -586,6 +588,8 @@ double Z0phi(double p, double e, double v)
 {
 	return (2*Sqrt(p/(-6 + 2*e + p))*(Pi*EllipticF((Pi - v)/2.,(4*e)/(-6 + 2*e + p)) + (-Pi + v)*EllipticK((4*e)/(-6 + 2*e + p))))/Pi;
 }
+
+
 
 // Elliptice Integrals and functions:
 

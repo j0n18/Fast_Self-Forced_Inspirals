@@ -492,6 +492,7 @@ void FFT_self_force_over_parameter_space(){
 		e += de;
 		for(int j=0; j < 100; j++){
 			p = 6 + 2*e + 0.05  + j*dp;
+			cout << p << endl;
 			FFT_self_force(p, e, &plan, N, in, out, &fv_file, &Fp_file, &Fe_file, &dFp_dp_file, &dFp_de_file, &dFe_dp_file, &dFe_de_file, &dV0_dp_file, &dV0_de_file, &dV0_dv_file, &dU0_dp_file, &dU0_de_file, &dU0_dv_file);
 		}
 	}

@@ -1,19 +1,4 @@
-// ---------------------- Get Error Data from NIT and Full inspirals ------------------------------
-// NIT_inspiral - code to rapidly compute extreme mass-ratio inspirals using self-force results
-// Copyright (C) 2017  Niels Warburton
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+// ---------------------- Get Overlap Data from NIT and Full inspirals ------------------------------
 
 #include <iostream>
 #include <fstream>
@@ -53,9 +38,8 @@ typedef complex<double> Complex;
 #define T_WAVEFORM_NIT   		9
 
 
-// -------------------------------- Include Statements --------------------------------------------
+// -------------------------------- Include Statements -------------------------------------------- //
 #include <Interpolant.h>
- // #include "../include/NIT_inspiral.h"
 #include <libconfig.h++>
 
 #include <gsl/gsl_errno.h>
@@ -71,7 +55,6 @@ typedef complex<double> Complex;
 #include <string>
 #include <iostream>
 #include <complex>
- // #include <iomanip>
 #include <algorithm>
 
 #define OUT_PREC 12
@@ -81,14 +64,13 @@ typedef complex<double> Complex;
 #define Sqrt(x)         (sqrt((double)(x)))
 #define Pi				M_PI
 #define Conjugate(x)	(conj(x))
+#define Tanh(x)			(atan((double) (x)))
 
 using namespace libconfig;
 Config cfg;
 
-
-
-// precision of output
-void GetErrors(vector<string> insp_filenames, string out_filename);
+// Instantiate functions:
+void GetOverlap(int wavCase, vector<string> insp_filenames, string out_filename, string NITwaveform_filename, string Fullwaveform_filename);
 double Tr(double p, double e, double v);
 double Z0t(double p, double e, double v);
 double Z0phi(double p, double e, double v);
@@ -99,25 +81,15 @@ double EllipticE(double k);
 double EllipticEIncomp(double phi, double k);
 double EllipticPi(double n, double k);
 double EllipticPiIncomp(double n, double phi, double k);
+vector<complex<double>> waveform_DFT(vector<complex<double>> Amps);
+double Eqn32(vector<complex<double>> x,vector<complex<double>> h, vector<double> f);
+double Eqn34(double xx, double hh, double xh);
+double Sh(double f);
+vector<complex<double>> DataLoad(string filename);
+vector<complex<double>> waveform_inverse_DFT(vector<complex<double>> Amps);
+double RunOverlap(vector<complex<double>> FullAmps, vector<complex<double>> NITAmps, vector<double> fs);
 
-// ------------------------------------------------------------------------- //
-/*
- * Erase First Occurrence of given substring from main string.
- */
-void eraseSubStr(std::string & mainStr, const std::string & toErase)
-{
-    // Search for the substring in string
-    size_t pos = mainStr.find(toErase);
-    if (pos != std::string::npos)
-    {
-        // If found then erase it from string
-        mainStr.erase(pos, toErase.length());
-    }
-}
-// ------------------------------------------------------------------------- //
-
-
-// ----------------------------- Generate the Inspiral Data ---------------------------------------
+// ----------------------------- Generate the Inspiral Data --------------------------------------- //
 int main(int argc, char* argv[])
 {
 
@@ -132,49 +104,77 @@ int main(int argc, char* argv[])
   	    exit(0);
     }
 
+string fileloc = "/mnt/c/Users/JonnyM/Desktop/GravityWaves/Fast_Self-Forced_Inspirals/";
 
-string fileloc, NITfile0, Fullfile0, NITfile, Fullfile, outNITfile0, outFullfile0, outNITfile, outFullfile;
-vector<string> NITStringsList, FullStringsList, outNITStringsList, outFullStringsList;
-
-fileloc = "/mnt/c/Users/JonnyM/Desktop/GravityWaves/Fast_Self-Forced_Inspirals/";
-
- // Initial strings
-NITfile0 = "NIT_inspiral -n0 10 0.1 0.001";
-Fullfile0 = "NIT_inspiral -f0 10 0.1 0.001"; // The first part should be NIT_inspiral for directory reasons. -f0 signifies Full.
+int wavCase = 1; // 0 means compare -w -n with -t -n
+			 	// 1 means compare -n -t with -f -t
 
 double dp = 1; // make 1
 double de = 0.1;
-int pmax = 14; // make 14
-int pmin = 8; // make 8
-double emax = 0.75; // This will be rounded to 0.7
+int pmax = 12; // make 14 
+int pmin = 11; // make 8 
+double emax = 0.7; // This will be rounded to 0.7
 double emin = 0.1; // make 0.1
-double floatValue, in_val, in_val1;
+double in_val, in_val1;
+int str_offset0 = 1;
+int str_offset1 = 1;
 
-string half = ".5"; // not going to need
 string in_str, sub, sub1;
-string newNIT, newFull,newNIT_e, newFull_e, newoutNIT, newoutFull,newoutNIT_e, newoutFull_e;
-Fullfile = Fullfile0;
-NITfile = NITfile0;
+string NITfile,Fullfile, outNITfile, outFullfile, newwaveformFile;
+string outwaveformNITFile,outwaveformFullFile,outTwaveformNITFile,outTwaveformFullFile;
+string outputFile, outputFile1;
+string append_strNIT, append_strFull;
+string NITfileSave, FullfileSave;
 
-vector<string> OutputFiles;
-string outputFile, newoutputFile,newoutputFile_e;
+ // Initial strings
+string NITfile0 = "NIT_inspiral -n0 10 0.1 0.001";
+string Fullfile0 = "NIT_inspiral -f0 10 0.1 0.001";
 
-string outputFile0 = "output/ErrorData_p10_e0.1_q0.001.dat";
-string outputFile01 = "output/ErrorData_p8_e0.1_q0.001.dat";
-outputFile = outputFile0;
+string outNITfile0 = "output/Inspiral_NIT_p12_e0.7_q0.001.dat";
+string outFullfile0 = "output/Inspiral_Full_p12_e0.7_q0.001.dat";
 
-outNITfile0 = "output/Inspiral_NIT_p12_e0.7_q0.001.dat";
-outFullfile0 = "output/Inspiral_Full_p12_e0.7_q0.001.dat";
+string outwaveformNITFile0 = "output/Waveform_NIT_p12_e0.7_q0.001.dat";
+string outwaveformFullFile0 = "output/Waveform_Full_p12_e0.7_q0.001.dat";
 
-outFullfile = outFullfile0;
-outNITfile = outNITfile0;
+string outTwaveformNITFile0 = "output/T_Waveform_NIT_p12_e0.7_q0.001.dat";
+string outTwaveformFullFile0 = "output/T_Waveform_Full_p12_e0.7_q0.001.dat";
 
-for ( int i = 0; i <= floor((pmax - pmin)*(1/dp)); i++) // eventually include evething upt to and including GetErrors(inputStrings,outputFile); in this loop
+string outputFile0 = "output/OverlapData_p10_e0.1_q0.001.dat";
+string outputFile01 = "output/OverlapData_p8_e0.1_q0.001.dat";
+
+if (wavCase == 0){ // comparing nw with nt
+	NITfile = NITfile0;
+	outNITfile = outNITfile0;
+	outwaveformNITFile = outwaveformNITFile0;
+	outTwaveformNITFile = outTwaveformNITFile0;
+
+	outputFile = outputFile0;
+	outputFile1 = outputFile01;
+
+} else if (wavCase == 1){ // comparing nt with ft
+
+	NITfile = NITfile0;
+	Fullfile = Fullfile0;
+
+	outNITfile = outNITfile0;
+	outFullfile = outFullfile0;
+
+	outTwaveformFullFile = outTwaveformFullFile0;
+	outTwaveformNITFile = outTwaveformNITFile0;
+
+	outputFile = outputFile0;
+	outputFile1 = outputFile01;
+
+}
+
+vector<string> NITStringsList, FullStringsList, outNITStringsList, outFullStringsList;
+vector<string> OutputFiles, WaveformOutputFilesNIT, WaveformOutputFilesFull, WaveformCommands;
+
+for ( int i = 0; i <= floor((pmax - pmin)*(1/dp)); i++) 
 {
 	in_val = pmin + i*dp;
 	in_val1 = in_val;
 	in_str = to_string(in_val);
-
 	sub = in_str.substr(0,4);
 
 	if (in_val < 10){
@@ -184,83 +184,230 @@ for ( int i = 0; i <= floor((pmax - pmin)*(1/dp)); i++) // eventually include ev
 		sub1 = in_str.substr(0,2);
 	}
 
-	newNIT = NITfile.replace(17,2,sub);
-	newFull = Fullfile.replace(17,2,sub);
-	newoutNIT = outNITfile.replace(21,2,sub1);
-	newoutFull = outFullfile.replace(22,2,sub1);
-	newoutputFile = outputFile.replace(18,2,sub1);	
+	NITfile.replace(17,2,sub);
+	outNITfile.replace(21,2,sub1);
+
+	if ( wavCase == 1){
+	Fullfile.replace(17,2,sub);
+	outFullfile.replace(22,2,sub1);
+	}
+	
+	if (wavCase == 0){
+
+		outwaveformNITFile.replace(21,2,sub1);
+		outTwaveformNITFile.replace(23,2,sub1);
+
+	} else if (wavCase == 1){
+
+		outTwaveformNITFile.replace(23,2,sub1);
+		outTwaveformFullFile.replace(24,2,sub1);
+
+	}
+	
+	outputFile.replace(20,2,sub1);	
 	
 
-	for ( int j = 0; j <= floor((emax - emin)*(1/de)); j++) // eventually include evething upt to and including GetErrors(inputStrings,outputFile); in this loop
+	for ( int j = 0; j <= floor((emax - emin)*(1/de)); j++) 
 	{	
 		in_val = emin + j*de;
 		in_str = to_string(in_val);
 		sub = in_str.substr(0,3);
 
-		newNIT_e = newNIT.replace(22,3,sub);
-		newFull_e = newFull.replace(22,3,sub);
-		newoutNIT_e = newoutNIT.replace(25,3,sub);
-		newoutFull_e = newoutFull.replace(26,3,sub);
-		newoutputFile_e = newoutputFile.replace(22,3,sub);
+		NITfile.replace(22,3,sub);
+		if(in_val1 < 10){
+			outNITfile.replace(25-str_offset0,3,sub);
+		}else{
+			outNITfile.replace(25,3,sub);	
+		}
+
+		if (wavCase == 1){
+
+		Fullfile.replace(22,3,sub);
 
 		if (in_val1 < 10){
-		newoutNIT_e.erase(24,1);
-		newoutFull_e.erase(25,1);
-		newoutputFile_e.erase(21,1);
+			outFullfile.replace(26-str_offset1,3,sub);
+		}
+		else{
+			outFullfile.replace(26,3,sub);
+		}
+	
+		}
 
-		newoutNIT_e.insert(27,"_");
-		newoutFull_e.insert(28,"_");
-		newoutputFile_e.insert(24,"_");
+	if (wavCase == 0){
+		if ( in_val1 < 10){
+			outwaveformNITFile.replace(25-str_offset0,3,sub);
+			outTwaveformNITFile.replace(27-str_offset0,3,sub);
+		}
+		else {
+			outwaveformNITFile.replace(25,3,sub);
+			outTwaveformNITFile.replace(27,3,sub);
+		}
+
+	} else if (wavCase == 1){
+		
+		if(in_val1 < 10){
+
+			outTwaveformNITFile.replace(27-str_offset1,3,sub);
+			outTwaveformFullFile.replace(28-str_offset1,3,sub);
 
 		}
-		
-		NITStringsList.push_back(newNIT_e);
-		FullStringsList.push_back(newFull_e);
-		outNITStringsList.push_back(newoutNIT_e);
-		outFullStringsList.push_back(newoutFull_e);
-		OutputFiles.push_back(newoutputFile_e);
+		else{
+
+			outTwaveformNITFile.replace(27,3,sub);
+			outTwaveformFullFile.replace(28,3,sub);
+		}
 	}
 
-	string in_str, sub, sub1;
-	string newNIT, newFull, newNIT_e, newFull_e, newoutNIT, newoutFull, newoutNIT_e, newoutFull_e, newoutputFile, newoutputFile_e;
+		if ( in_val1 < 10){
+
+			outputFile.replace(24-str_offset1,3,sub);
+
+		} 
+		else{
+
+			outputFile.replace(24,3,sub);
+
+		}
+
+		NITfileSave = NITfile;
+		FullfileSave = Fullfile;
+
+	NITStringsList.push_back(NITfile);
+	outNITStringsList.push_back(outNITfile);
+	OutputFiles.push_back(outputFile);
+	
+	if ( wavCase == 1){
+	FullStringsList.push_back(Fullfile);
+	outFullStringsList.push_back(outFullfile);
+	}
+
+	if (wavCase == 0){
+			WaveformOutputFilesNIT.push_back(outwaveformNITFile);
+			WaveformOutputFilesFull.push_back(outTwaveformNITFile); // In wavCase = 0 Full is -t
+		}
+		else if (wavCase == 1){
+			WaveformOutputFilesNIT.push_back(outTwaveformNITFile);
+			WaveformOutputFilesFull.push_back(outTwaveformFullFile);
+		}
+
+		//waveform command string:
+		if (wavCase == 0){
+			newwaveformFile = NITfile.replace(14,2,"w ");
+			newwaveformFile.insert(newwaveformFile.size()," -n");
+			WaveformCommands.push_back(newwaveformFile);
+			NITfile = NITfileSave;
+			
+			newwaveformFile = NITfile.replace(14,2,"t ");
+			newwaveformFile.insert(newwaveformFile.size()," -n");
+			WaveformCommands.push_back(newwaveformFile);
+			NITfile = NITfileSave;
+
+		} else if (wavCase == 1){
+
+			newwaveformFile = NITfile.replace(14,2,"t ");
+			newwaveformFile.insert(newwaveformFile.size()," -n");
+			WaveformCommands.push_back(newwaveformFile);
+			NITfile = NITfileSave;
+			
+			newwaveformFile = Fullfile.replace(14,2,"t ");
+			newwaveformFile.insert(newwaveformFile.size()," -f");
+			WaveformCommands.push_back(newwaveformFile);
+			Fullfile = FullfileSave;
+
+		} 
+
+
+	}
+
+
+	string in_str, sub, sub1, append_strNIT, append_strFull, newwaveformFile;
 	Fullfile = Fullfile0;
 	NITfile = NITfile0;
 	outFullfile = outFullfile0;
 	outNITfile = outNITfile0;
 	outputFile = outputFile0;
+
+	if (wavCase == 0){
+		outwaveformNITFile = outwaveformNITFile0;
+		outTwaveformNITFile = outTwaveformNITFile0;
+
+	} else if (wavCase == 1){
+		outTwaveformNITFile = outTwaveformNITFile0;
+		outTwaveformFullFile = outTwaveformFullFile0;
+
+	}
+	
 }
 
-cout << "Running GetErrorData.cc"<< endl;
- // cout << OutputFiles[1] << endl;
+cout << "Running GetOverlapData.cc"<< endl;
 
-for ( int i = 0; i < outFullStringsList.size(); i++){
-	cout << OutputFiles[i] << endl;
+for ( int i = 0; i < NITStringsList.size(); i++){
+	cout << FullStringsList[i] << endl; 
+	//cout << fileloc + WaveformOutputFilesFull[i] << endl; 
 }
 
+cout << " " << endl;
+cout << " " << endl;
 
-for (int i = 0; i < FullStringsList.size(); i++){
+for ( int i = 0; i < NITStringsList.size(); i++){
+	cout << WaveformOutputFilesFull[i] << endl; 
+	//cout << fileloc + WaveformOutputFilesFull[i] << endl; 
+}
+
+cout << " " << endl;
+cout << " " << endl;
+
+
+for ( int i = 0; i < NITStringsList.size(); i++){
+	cout << WaveformOutputFilesNIT[i] << endl; 
+	//cout << fileloc + WaveformOutputFilesFull[i] << endl; 
+}
+
+cout << " " << endl;
+cout << " " << endl;
+
+for ( int i = 0; i < NITStringsList.size(); i++){
+	cout << OutputFiles[i] << endl; 
+	//cout << fileloc + WaveformOutputFilesFull[i] << endl; 
+}
+
+for (int i = 0; i < NITStringsList.size(); i++){
+
 	string run_pre = fileloc + NITStringsList[i];
 	cout << run_pre << endl;
 	const char* run = run_pre.c_str();
 	system(run);
 	//system("/mnt/c/Users/JonnyM/Desktop/GravityWaves/Fast_Self-Forced_Inspirals/NIT_inspiral -n0 12 0.7 0.001");
+	if (wavCase == 1){
 	run_pre = fileloc + FullStringsList[i];
 	cout << run_pre << endl;
 	run = run_pre.c_str();
 	system(run);
+	}
 	//system("/mnt/c/Users/JonnyM/Desktop/GravityWaves/Fast_Self-Forced_Inspirals/NIT_inspiral -f0 12 0.7 0.001");
+	//---------------------------------------------------------------------------------------------------------- //
+	//run the waveform commands here:
+	run_pre = fileloc + WaveformCommands[2*i];
+	cout << run_pre << endl;
+	run = run_pre.c_str();
+	system(run);
+
+	//run the waveform commands here:
+	run_pre = fileloc + WaveformCommands[2*i + 1];
+	cout << run_pre << endl;
+	run = run_pre.c_str();
+	system(run);
+	
 	vector<string> inputStrings;
 	inputStrings.push_back(fileloc + outNITStringsList[i]);
+	if (wavCase == 1){
 	inputStrings.push_back(fileloc + outFullStringsList[i]);
+	}
+	
+	//cout << inputStrings[0] << endl;
+	
+	GetOverlap(wavCase,inputStrings,OutputFiles[i],WaveformOutputFilesNIT[i],WaveformOutputFilesFull[i]); // WaveformCommands is the command string for -t or -w
 
-	//inputStrings.push_back("/mnt/c/Users/JonnyM/Desktop/GravityWaves/Fast_Self-Forced_Inspirals/output/Inspiral_NIT_p12_e0.7_q0.001.dat");
-	//inputStrings.push_back("/mnt/c/Users/JonnyM/Desktop/GravityWaves/Fast_Self-Forced_Inspirals/output/Inspiral_Full_p12_e0.7_q0.001.dat");
-	//outputFile = "testOutputA.dat";
-
-	GetErrors(inputStrings,OutputFiles[i]); // PROBLEM - Only saving the first file to the output folder??
-
-	//GetErrors(inputStrings,outputFile);
-	// fileloc = "/mnt/c/Users/JonnyM/Desktop/GravityWaves/Fast_Self-Forced_Inspirals/";
 	cout << " " << endl;
 	}
 
@@ -268,7 +415,7 @@ for (int i = 0; i < FullStringsList.size(); i++){
 
 // ----------------------------- Import the Inspiral Data -----------------------------------------
 
-void GetErrors(vector<string> insp_filenames, string out_filename){
+void GetOverlap(int wavCase, vector<string> insp_filenames, string out_filename, string NITwaveform_filename, string Fullwaveform_filename){
 	ofstream fout;
 
 	fout.precision(OUT_PREC);
@@ -276,157 +423,6 @@ void GetErrors(vector<string> insp_filenames, string out_filename){
 	fout << scientific;
 	cout << scientific;
 
-	// Input: the name of eht NIT file and the name of the Full file
-	vector<double> chis, ps, es, vs, ts, phis, chits, pts, ets, vts, tts, phits;
-	// FIXME only load data up to t_max (rather than the entire phase space trajectory as is currently done)	
-	string insp_string;
-	
-	double chi, p, e, v, t, phi;
-	double mode = NIT_INSPIRAL;
-
-	vector<vector<double>> NIT, Full;
-	vector<Interpolant*> NIT_interp, Full_interp;
-
-for ( int j = 0; j <= 1; j++ )
-{
-	vector<double> chis, ps, es, vs, ts, phis, chits, pts, ets, vts, tts, phits;
-	// First pass for NIT, second pass for Full:
-	//Store in the same order read in from file: chi, p, e, v, t, phi
-
-	string insp_filename = insp_filenames[j];
-
-	if (j == 0){
-		mode = NIT_INSPIRAL;
-	}else if (j == 1){
-		mode = FULL_INSPIRAL;
-	}
-	// cout << mode << endl;
-	// Check if the associated inspiral trajectory file exists
-	ifstream insp(insp_filename);
-	if(!insp){
-		cout << "Inspiral file: " << insp_filename << " does not exist." << endl;
-		exit(0);
-	}
-	
-	// Load the NIT and Full inspiral trajectory
-    if(mode == NIT_INSPIRAL){
-
-	    cout << "Loading NIT inspiral trajectory data"  << endl;
-
-    }else if (mode == FULL_INSPIRAL){
-        
-        cout << "Loading Full inspiral trajectory data"  << endl;
-    }
-
-	int test = 0;
-	while(getline(insp, insp_string)){
-				
-		if(insp_string.at(0) == '#') continue;
-		
-		stringstream insp_ss(insp_string);
-		
-		insp_ss >> chi >> p >> e >> v >> t >> phi;
-						
-		if(mode == FULL_INSPIRAL)
-			v = chi-v; // This makes the v used for Full actually v, meaning vError = abs(vt-v)
-		
-		if(test == 0) test = 1;
-		else if(v <= vs.back()) break;
-		else if(chi <= chis.back()) break;
-		
-		vs.push_back(v);
-		chis.push_back(chi);
-		ps.push_back(p);
-		es.push_back(e);
-		ts.push_back(t);
-		phis.push_back(phi);
-
-
-	}
-
-vector<double> w_rs, w_phis;
-
-for (int i = 1; i < vs.size(); i++){
-	w_rs.push_back((vs[i]-vs[i-1])/(ts[i]-ts[i-1]));
-	w_phis.push_back((phis[i]-phis[i-1])/(ts[i]-ts[i-1]));
-}
-double ccount = 0;
-
-if(j == 0){
-	NIT.push_back(chis);
-	NIT.push_back(ps);
-	NIT.push_back(es);
-	NIT.push_back(vs);
-	NIT.push_back(ts);
-	NIT.push_back(phis);
-	NIT.push_back(w_rs);
-	NIT.push_back(w_phis);
-
-	NIT_interp.push_back(new Interpolant(vs,chis));
-	NIT_interp.push_back(new Interpolant(vs,ps));
-	NIT_interp.push_back(new Interpolant(vs,es));
-	NIT_interp.push_back(new Interpolant(vs,ts));
-	NIT_interp.push_back(new Interpolant(vs,phis));
-	NIT_interp.push_back(new Interpolant(vs,w_rs));
-	NIT_interp.push_back(new Interpolant(vs,w_phis));
-	NIT_interp.push_back(new Interpolant(chis,vs));
-
-} else if (j == 1){
-
-	Full.push_back(chis);
-	Full.push_back(ps);
-	Full.push_back(es);
-	Full.push_back(vs);
-	Full.push_back(ts);
-	Full.push_back(phis);
-	Full.push_back(w_rs);
-	Full.push_back(w_phis);
-
-	Full_interp.push_back(new Interpolant(vs,chis));
-	Full_interp.push_back(new Interpolant(vs,ps));
-	Full_interp.push_back(new Interpolant(vs,es));
-	Full_interp.push_back(new Interpolant(vs,ts));
-	Full_interp.push_back(new Interpolant(vs,phis));
-	Full_interp.push_back(new Interpolant(chis,vs));
-}
-
-/* Remember:
-
-chit_interp = NIT_interp[0];
-pt_interp = NIT_interp[1];
-et_interp = NIT_interp[2];
-tt_interp = NIT_interp[3];
-phit_interp = NIT_interp[4];
-w_rt_interp = NIT_interp[5];
-w_phit_interp = NIT_interp[6];
-vt_interp = NIT_interp[7];
-
-chi_interp = Full_interp[0];
-p_interp = Full_interp[1];
-e_interp = Full_interp[2];
-t_interp = Full_interp[3];
-phi_interp = Full_interp[4];
-*/
-
-}
-
-chis = Full[0];
-//ps = Full[1];
-//es = Full[2];
-vs = Full[3];		// Should only need the vs and vts
-//ts = Full[4];
-//phis = Full[5];
-
-chits = NIT[0];
-//pts = NIT[1];
-//ets = NIT[2];
-vts = NIT[3];
-//tts = NIT[4];
-//phits = NIT[5];
-
-// omega*t,phi and v error functions:
-
-// obtain the dense vs to use to plug into all the interpolants:
 int i_max;
 double M_solar, Deltat_sec;
 	try{
@@ -450,168 +446,354 @@ double M_solar, Deltat_sec;
 	double Msolar_sec	= 4.9253908380897e-6;	// Solar mass in seconds				
 	double M 			= M_solar * Msolar_sec;	// Mass of the primary in seconds
 	double Deltat		= Deltat_sec/M;			// Time step in units of M	
-
-double t_max = i_max*Deltat;
-double chit, pt, et, vt, tt, phit;
-vector<double> t_dense, tt_dense, v_dense, vt_dense, chit_dense, chi_vec;
 	
-	v = vs[0];
-	if (chits.back() > chis.back()){
-		chi_vec = chis;
-	} else if (chits.back() < chis.back()){
-		chi_vec = chits;
-	}
+// -------------------------------------------- Waveform Fourier Analysis ------------------------------------ //
+// 1. Calculate waveforms for all different waveform strings:
 
-	chit = chi_vec[0];
 
-	//cout << "hi" << endl;
-	while(v < vs[vs.size() - 1] && chit < chi_vec[chi_vec.size() -1]){
-		v = Full_interp[5]->eval(chit);
-		vt = NIT_interp[7]->eval(chit);
-		p = Full_interp[1]->eval(v);
-		e = Full_interp[2]->eval(v);
+// 2. load in the waveform output (ampitude) data:
 
-		pt = NIT_interp[1]->eval(vt);
-		et = NIT_interp[2]->eval(vt);
-			
-		v_dense.push_back(v);
-		vt_dense.push_back(vt);
-		chit_dense.push_back(chit);
+vector<complex<double>> FullAmps, NITAmps, FullAmpsIn, NITAmpsIn;
+cout << Fullwaveform_filename << endl;
+cout << NITwaveform_filename << endl;
 
-		t = Full_interp[3]->eval(v);
-		tt = NIT_interp[3]->eval(vt);
-		
-		t_dense.push_back(t);
-		tt_dense.push_back(tt);
-		
-		if(t > t_max) break;	
-		// v += 2.0*M_PI/10.;
-		chit += 2.0*M_PI/10.;// NIT_interp[0]->eval(v);	
-	}
+FullAmps = DataLoad(Fullwaveform_filename);
+NITAmps = DataLoad(NITwaveform_filename);
 
-	 // cout << "hey" << endl;
+// make sure xand h are the same length and of an odd length:
+	int n;
 
-/*
-for ( int i = 0; i < v_dense.size();i++){
-	cout << v_dense[i] - vt_dense[i] << endl; // vt is essentially the same as v 
-}
-*/
-
-	int i_max_test = floor(t_dense.back()/Deltat)-1;
-	if(i_max > i_max_test) i_max = i_max_test;
-
-	vector<double> wtR_Error, wtPhi_Error, phi_Error, v_Error;
-	double dwtR,dwtPhi, dphi, dv;
-	double w_r, w_phi;
-
-	for(int i = 0; i <= v_dense.size()-1; i ++)
+	if ( FullAmps.size() < NITAmps.size())
 	{
-	v = v_dense[i];
-	vt = vt_dense[i];
+		n = FullAmps.size();
+	} 
 
-	chi = Full_interp[0]->eval(v);
-	p = Full_interp[1]->eval(v);
-	e = Full_interp[2]->eval(v);
-	t = Full_interp[3]->eval(v);
-	phi = Full_interp[4]->eval(v);
+	else
+	{
+		n = NITAmps.size();
+	}
+	
 
-	 // chit = NIT_interp[0]->eval(vt);
-	pt = NIT_interp[1]->eval(vt);
-	et = NIT_interp[2]->eval(vt);
-	tt = NIT_interp[3]->eval(vt);
-	phit = NIT_interp[4]->eval(vt);
-	w_r = NIT_interp[5]->eval(vt);
-	w_phi = NIT_interp[6]->eval(vt);
-
-// Big for loop for calculating all the error values
-	dwtR = w_r*abs(((1/M)*((tt-Z0t(pt,et,vt)) - t)));
-	dwtPhi = w_phi*abs(((1/M)*((tt-Z0t(pt,et,vt)) - t)));
-	dphi = abs((phit-Z0phi(pt,et,vt)) - phi);
-	dv = abs(vt-v);
-
-	wtR_Error.push_back(dwtR);
-	wtPhi_Error.push_back(dwtPhi);
-	phi_Error.push_back(dphi);
-	v_Error.push_back(dv);
-
-	}// end of big for loop for calculating all the error values
-
-
-// Output error data to out_filename:
-fout.open(out_filename);
-cout << "Outputting error data to " << out_filename << endl;
-	double t_sec;
-	for(int i = 0; i <= v_dense.size() -1; i ++){
-		
-		fout << v_dense[i] << " " << wtR_Error[i] << " " << wtPhi_Error[i] << " " << phi_Error[i] << " " << v_Error[i] << endl;
-
+	if (n % 2 == 0){
+		n -= 1;
 	}
 
-} // End of GetErrors
+	for ( int i = 0; i < n; i++){
+		FullAmpsIn.push_back(FullAmps[i]);
+		NITAmpsIn.push_back(NITAmps[i]);
+	}
 
-// ------------------------------- Error Functions ----------------------------------- //
 
-//Tr: --- For this one we need elliptical functions: EllipticK, EllipticPi,EllipticF
-double Tr(double p, double e, double v)
-{
-	return (2*Sqrt((-4*Power(e,2) + Power(-2 + p,2))/(-6 + 2*e + p))*
-     ((-1 - e)*(2 + 2*e - p)*(-4 + p)*p*(-6 + 2*e + p)*EllipticE((4*e)/(-6 + 2*e + p)) + 
-       (1 + e)*(2 + 2*e - p)*p*(36 + 2*Power(e,2)*(-2 + p) + (-14 + p)*p)*EllipticK((4*e)/(-6 + 2*e + p)) + 
-       2*(6 + 2*e - p)*((-2 - 2*e + p)*(8 + p - Power(p,2) + Power(e,2)*(-8 + 3*p))*
-           EllipticPi((2*e*(-4 + p))/((1 + e)*(-6 + 2*e + p)),(4*e)/(-6 + 2*e + p)) - 
-          (-1 + e)*Power(1 + e,2)*Power(-4 + p,2)*EllipticPi((16*e)/(12 + 8*e - 4*Power(e,2) - 8*p + Power(p,2)),
-            (4*e)/(-6 + 2*e + p)))))/((-1 + e)*Power(1 + e,2)*(2 + 2*e - p)*Power(-4 + p,2));
+
+// Staying within the double for loop:
+cout << "Computing the Fourier Amplitudes" << endl;
+
+// 3. find the Fourier Amplitudes:
+	vector<complex<double>> x, h, xP, hP, xN, hN;
+	vector<double> fP, fN;
+
+	x = waveform_DFT(NITAmpsIn); // NIT is x 
+
+	h = waveform_DFT(FullAmpsIn); // Full is h
+
+	//x.erase(x.begin());
+	//h.erase(h.begin());
+
+	cout << n << endl;
+
+	double dt = Deltat;
+	double fmin = 0;
+	double fmax = 1/dt;
+
+	double df = (fmax-fmin)/n;
+
+	vector<double> fs;
+
+	int iter = (n-1)/2;
+
+	for ( int i = 0; i <= iter; i++)
+	{
+		fs.push_back(i*df); // starting at 1 to remove the zero frequency value
+	}
+
+	for ( int i = -iter; i <= -1; i++)
+	{
+		fs.push_back(i*df); // starting at 1 to remove the zero frequency value
+	}
+	
+	fs[0] = 1e-6;
+	
+	// the negative frequencies seem to be correct...
+
+	for ( int i = 0; i < iter; i++) // i = 0 should correspond in fs to a frequency of f = df since we removed the zero frequency element
+	{
+		xP.push_back(x[i]);
+		hP.push_back(h[i]);
+		fP.push_back(fs[i]);
+	}
+
+	for ( int i = iter; i < x.size(); i++){ // x.size() should correspond to n-1 since we erased the zero frequency element
+		xN.push_back(x[i]);
+		hN.push_back(h[i]);
+		fN.push_back(fs[i]);
+	}
+
+cout << fN.size() << endl;
+cout << fP.size() << endl;
+// 4. Calculate the Overlap using Eqn 32 and 34:
+
+	double Exx, Ehh, Exh,ExxP, EhhP, ExhP, ExxN, EhhN, ExhN;
+
+	Exx = Eqn32(x,x,fs);
+	Ehh = Eqn32(h,h,fs);
+	Exh = Eqn32(x,h,fs);
+
+	// Splitting into Positive and Negative seems to be giving more reliable answers... 
+	ExxP = Eqn32(xP,xP,fP);
+	EhhP = Eqn32(hP,hP,fP);
+	ExhP = Eqn32(xP,hP,fP);
+
+	ExxN = Eqn32(xN,xN,fN);
+	EhhN = Eqn32(hN,hN,fN);
+	ExhN = Eqn32(xN,hN,fN);
+
+	
+	
+	/*
+	cout << "HELLO" << endl;
+	cout << Exx << endl;
+	cout << Ehh << endl;
+	cout << Exh << endl;
+	cout << "HELLO" << endl;
+	*/
+
+	double similarity, similarity1, similarity2;
+
+	similarity = Eqn34(Exx, Ehh, Exh);
+	similarity1 = Eqn34(ExxP + ExxN, EhhP + EhhN, ExhP + ExhN); // values are not consistent with more e's
+	similarity2 = RunOverlap(FullAmpsIn,NITAmpsIn,fs); // This line causes the values of similarity 1 and 2 to change??
+														// similarity values not consistent 
+
+ // end of loop through waveform filenames
+	string fileloc = "/mnt/c/Users/JonnyM/Desktop/GravityWaves/Fast_Self-Forced_Inspirals/";
+	// make a general file to output overlap scores to:
+	
+	 // string fileloc = "/mnt/c/Users/JonnyM/Desktop/GravityWaves/Fast_Self-Forced_Inspirals/";
+	 string name1, name2;
+
+	name1 = insp_filenames[0].substr(fileloc.size(),insp_filenames[0].size());
+	if ( wavCase == 1){
+	name2 = insp_filenames[1].substr(fileloc.size(),insp_filenames[1].size());
+	}
+	fout.open(out_filename);
+
+
+	cout << "Outputting error data to " << out_filename << endl;
+	if ( wavCase == 0){
+	cout << "Overlap Score using Exx... for " << name1 << " comparing -w and -t" << "\n" << similarity << "\n" << endl;
+	cout << "Overlap Score using ExxP and ExxN ... for " << name1 << " comparing -w and -t" << "\n" << similarity1 << "\n" << endl;
+	cout << "Overlap Score using SimulationTools Method for " << name1 << " comparing -w and -t" << "\n" << similarity2 << "\n" << endl;
+	fout << "Overlap Score for " << name1 << " comparing -w and -t" << "\n" << similarity << "\n" << endl;
+	}
+	else if (wavCase == 1){
+	cout << "Overlap Score using Exx... for " << name1 << " and " << name2 << "\n" << similarity << "\n" << endl;
+	cout << "Overlap Score using ExxP and ExxN ... for " << name1 << " and " << name2 << "\n" << similarity1 << "\n" << endl;
+	cout << "Overlap Score using SimulationTools Method for " << name1 << " and " << name2 << "\n" << similarity2 << "\n" << endl;
+	fout << "Overlap Score for " << name1 << " and " << name2 << "\n" << similarity << "\n" << endl;
+	}
+} // End of GetOverlap
+
+// ------------------------------- Functions ----------------------------------- //
+
+vector<complex<double>> waveform_DFT(vector<complex<double>> Amps){
+
+	int N = Amps.size();
+    fftw_complex *in, *out;
+    fftw_plan plan;
+
+    in = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * N);
+    out = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * N);
+    plan = fftw_plan_dft_1d(N, in, out, FFTW_FORWARD, FFTW_ESTIMATE);
+
+	// Build input:
+	//The input to this should just be a complex number whose real part is N_re and whose imaginary part is N_im
+	for ( int i = 0; i <Amps.size(); i++)
+	{
+		in[i][0] = Amps[i].real();
+		in[i][1] = Amps[i].imag();
+	}
+
+	fftw_execute(plan); // this populates the out vector with the fourier amplitudes
+
+	vector<complex<double>> Out;
+
+	for ( int i = 0; i < Amps.size(); i++){
+		Out.push_back(Complex (out[i][0],out[i][1]));
+	}
+
+	return Out;
+
+} // end of waveform_DFT
+
+
+// -------------------------------------------------------------------------------------
+
+vector<complex<double>> waveform_inverse_DFT(vector<complex<double>> Amps){
+
+	int N = Amps.size();
+    fftw_complex *in, *out;
+    fftw_plan plan;
+
+    in = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * N);
+    out = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * N);
+    plan = fftw_plan_dft_1d(N, in, out, FFTW_BACKWARD, FFTW_ESTIMATE);
+
+	// Build input:
+	//The input to this should just be a complex number whose real part is N_re and whose imaginary part is N_im
+	for ( int i = 0; i <Amps.size(); i++)
+	{
+		in[i][0] = Amps[i].real();
+		in[i][1] = Amps[i].imag();
+	}
+
+	fftw_execute(plan); // this populates the out vector with the inverse fourier amplitudes
+
+	vector<complex<double>> Out;
+
+	for ( int i = 0; i < Amps.size(); i++){
+		Out.push_back(Complex (out[i][0],out[i][1]));
+	}
+
+	return Out;
+
+} // end of waveform_inverse_DFT
+
+// ---------------------------------------------------------------------------------------
+
+double RunOverlap(vector<complex<double>> FullAmps, vector<complex<double>> NITAmps, vector<double> fs){
+
+vector<complex<double>> x, h;
+
+ // 1. Fourier[]
+	x = waveform_DFT(NITAmps); // NIT is x 
+	h = waveform_DFT(FullAmps); // Full is h
+
+	 // x.erase(x.begin());
+	 // h.erase(h.begin());
+
+// 2. Compute Normalizations:
+	vector<complex<double>> xIn, hIn, invx_pre, invh_pre;
+	vector<double> invx, invh;
+	double inputx, inputh;
+
+	for ( int i = 0; i < x.size(); i++){
+
+		inputx = (Power(abs(x[i]),2))/Sh(fs[i]);
+		inputh = Power(abs(h[i]),2)/Sh(fs[i]);
+
+		xIn.push_back(inputx);
+		hIn.push_back(inputh);
+	}
+
+	invx_pre = waveform_inverse_DFT(xIn);
+	invh_pre = waveform_inverse_DFT(hIn);
+
+	for ( int i = 0; i < invx_pre.size(); i++){
+		invx.push_back(4 * abs(invx_pre[i]));
+		invh.push_back(4 * abs(invh_pre[i]));
+	}	
+
+	double norm1 = invx[0];
+	double norm2 = invh[0];
+
+// 3. Compute ther inner product integrand:
+
+	vector<complex<double>> integrand;
+	complex<double> integrand_pre;
+	for ( int i = 0; i < x.size(); i++){
+		integrand_pre = (x[i] * conj(h[i]))/Sh(fs[i]);
+		integrand.push_back(integrand_pre);
+	}
+
+// 4. Compute the match:
+
+ vector<complex<double>> ret;
+ vector<double> retout;
+
+ ret = waveform_inverse_DFT(integrand);
+
+	for ( int i = 0; i < ret.size(); i++){
+		retout.push_back(abs(ret[i])); 
+	}	
+
+	double retmaxind = *max_element(retout.begin(),retout.end()); // This is the index of the highest value in retout
+	return 4 * (retout[retmaxind])/Sqrt((norm1 * norm2));
+
 }
 
-//Phir:
-double Phir(double p, double e)
-{
-	return 4*Sqrt(p/(-6 + 2*e + p))*EllipticK((4*e)/(-6 + 2*e + p));
+
+// ---------------------------------------------------------------------------------------
+
+double Eqn32(vector<complex<double>> x,vector<complex<double>> h, vector<double> f){
+	double sum = 0;
+
+	int K = (1/2) * (x.size() - 1);  // by the time this function is called x should be of length n
+	for ( int i = 0; i <= K; i++){
+		sum += abs(( x[i]*conj(h[i]) + conj(x[i])*h[i] )/(Sh(f[i]))); // abs() of a complex number gives the modulus which we want
+	}
+	
+	return 2*sum;
 }
 
-//Z0t: takes tilded values as arguments
-double Z0t(double p, double e, double v)
-{
-return (Tr(p,e,v)*(-Pi + v))/(2.*Pi) - (p*Sqrt(-2 - 2*e + p)*Sqrt(-6 + 2*e + p)*Sqrt(-2 + 2*e + p)*
-      EllipticEIncomp((-Pi + v)/2.,(4*e)/(-6 + 2*e + p)))/((1 - Power(e,2))*(-4 + p)) + 
-   (p*Sqrt(-2 - 2*e + p)*Sqrt(-2 + 2*e + p)*EllipticF((-Pi + v)/2.,(4*e)/(-6 + 2*e + p)))/
-    ((1 - Power(e,2))*Sqrt(-6 + 2*e + p)) - (2*Sqrt(-2 - 2*e + p)*Sqrt(-2 + 2*e + p)*
-      (3 + ((-2 - 2*e + p)*(-2 + 2*e + p))/((1 - Power(e,2))*(-4 + p)))*
-      EllipticPiIncomp((-2*e)/(1 - e),(-Pi + v)/2.,(4*e)/(-6 + 2*e + p)))/((1 - e)*Sqrt(-6 + 2*e + p)) - 
-   (8*Sqrt(-2 - 2*e + p)*EllipticPiIncomp((4*e)/(-2 + 2*e + p),(-Pi + v)/2.,(4*e)/(-6 + 2*e + p)))/
-    (Sqrt(-6 + 2*e + p)*Sqrt(-2 + 2*e + p)) + (e*p*Sqrt(-2 - 2*e + p)*Sqrt(-2 + 2*e + p)*Sqrt(-6 + p - 2*e*Cos(v))*Sin(v))/
-    ((1 - Power(e,2))*(-4 + p)*(1 + e*Cos(v)));
+double Eqn34(double xx, double hh, double xh){
+	return xh/(Sqrt(abs(xx) * abs(hh))); // xx, xh and hh shold be the results of plugging into Eqn32 for (x,x) (x,h) and (h,h)
 }
 
-//Z0phi: takes tildeed values as arguments
-double Z0phi(double p, double e, double v)
-{
-	return (Phir(p,e)*(-Pi + v))/(2.*Pi) - (2*Sqrt(p)*EllipticF((-Pi + v)/2.,(4*e)/(-6 + 2*e + p)))/Sqrt(-6 + 2*e + p);
+
+double Sh(double f1){
+	double f = abs(f1);
+	return 5.333333333333333e-19*(1 + 274.40255018754044*Power(f,2))*(2.25e-22*(1 + 1.6e-11/Power(f,4)) + (9*(1 + 1.6e-7/Power(f,2))*(1 + 2.44140625e8*Power(f,4)))/(4.e30*Power(f,4)*Power(Pi,4))) + 
+   (9*Power(exp(1),-Power(f,0.165) + 299*f*Sin(611*f))*(1 + Tanh(1340*(0.00173 - f))))/(1.e45*Power(f,2.3333333333333335));
+
 }
 
-// Elliptice Integrals and functions:
+vector<complex<double>> DataLoad(string filename){
 
-double EllipticK(double k){
-	return gsl_sf_ellint_Kcomp(sqrt(k), GSL_PREC_DOUBLE);
+	ifstream inFile;
+	string line;
+	double t_col, Re, Im;
+	int iter, input, num_cols;
+	vector<double> t_vals;
+
+	inFile.open(filename); 
+	if (!inFile)
+		{
+		cout << "Unable to open Waveform data file \n";
+		exit(1); // terminate with error
+		}
+
+	vector<complex<double>> HTeukAmps; //HTeuk values 
+	double k = 0;
+	// loop through each orbit (rows in data file)
+	while(getline(inFile,line))
+		{
+		istringstream ss(line);
+
+		if ( k < 6){
+			k+=1;
+			continue;
+		}
+
+		ss >> t_col;    // extracts 1st col, which are the times
+		ss >> Re;    // extracts 2nd col, which are the real parts of the amplitude
+		ss >> Im; 
+
+		t_vals.push_back(t_col);
+		HTeukAmps.push_back(Complex(Re,Im));
+
+		
+		}
+	inFile.close();
+
+	return HTeukAmps;
 }
-
-double EllipticF(double phi, double k){
-	return gsl_sf_ellint_F(phi, sqrt(k), GSL_PREC_DOUBLE) ;
-}
-
-double EllipticE(double k){
-	return gsl_sf_ellint_Ecomp(sqrt(k), GSL_PREC_DOUBLE);
-}
-
-double EllipticEIncomp(double phi, double k){
-	return gsl_sf_ellint_E(phi, sqrt(k), GSL_PREC_DOUBLE) ;
-}
-
-double EllipticPi(double n, double k){
-	return gsl_sf_ellint_Pcomp(sqrt(k), -n, GSL_PREC_DOUBLE);
-}
-
-double EllipticPiIncomp(double n, double phi, double k){
-	return gsl_sf_ellint_P(phi, sqrt(k), -n, GSL_PREC_DOUBLE);
-}
-

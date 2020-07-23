@@ -4,4 +4,5 @@ build
 *.o
 getit
 *.dat
+outputGenerator.cc
 *.sh

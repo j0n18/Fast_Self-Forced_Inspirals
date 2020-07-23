@@ -51,6 +51,12 @@
 // smallest value for p-2*e-6
 #define Y_MIN 0.1
 
+// number of Fourier coefficients in FFT for -n
+#define FOURIER_CALC_NUM 50
+
+// number of Fourier coefficients to print for -n, must be less than half of FOURIER_CALC_NUM
+#define FOURIER_PRINT_NUM 10
+
 using namespace libconfig;
 
 void compute_waveform(string insp_filename, string out_filename);
@@ -431,7 +437,7 @@ void interpolate_Fs_and_integrate_NIT_EoM(int mode, double p0, double e0){
 			fout << chi << " " << y1[0] << " " << y1[1] << " " << y1[2] << " " << y1[3] << " " << y1[4] << " " << endl;
 			
 			// Stop output of lots of data near the separatrix when the time step gets very small
-			if(fabs(chi_prev/chi - 1.0) < NUM_TOL) break;
+			if(fabs(chi_prev/chi - 1.0) < 3*NUM_TOL) break;
 			
 		    chi_prev = chi;	
 	      }
@@ -454,7 +460,7 @@ void interpolate_Fs_and_integrate_NIT_EoM(int mode, double p0, double e0){
 // Functions for computing the RHS of the NIT EoM
 void FFT_self_force_over_parameter_space(){
 	double p, e;
-	int N = 50;
+	int N = FOURIER_CALC_NUM;
     fftw_complex *in, *out;
     fftw_plan plan;
 
@@ -492,6 +498,7 @@ void FFT_self_force_over_parameter_space(){
 		e += de;
 		for(int j=0; j < 100; j++){
 			p = 6 + 2*e + 0.05  + j*dp;
+			cout << p << endl;
 			FFT_self_force(p, e, &plan, N, in, out, &fv_file, &Fp_file, &Fe_file, &dFp_dp_file, &dFp_de_file, &dFe_dp_file, &dFe_de_file, &dV0_dp_file, &dV0_de_file, &dV0_dv_file, &dU0_dp_file, &dU0_de_file, &dU0_dv_file);
 		}
 	}
@@ -532,7 +539,7 @@ void FFT_self_force(double p, double e, fftw_plan *plan, int N, fftw_complex *in
 	double *v = new double[N];
 	
 	// The number of Fourier modes to output
-	int N_out = 10;
+	int N_out = FOURIER_PRINT_NUM;
 	
 	// Output the coordinates in phase space, y = p-2e, e 
 	*Fp_file << p-2*e << " " << e << " ";
@@ -780,7 +787,7 @@ void construct_tilde_Fs(){
 		double Fp2 = 0, Fe2 = 0, U1 = 0, V1 = 0, Xv1 = 0, Yp1 = 0, Ye1 = 0;
 		Complex Fpk, Fek, fvk, dFpdpk, dFpdek, dFedpk, dFedek;
 		Complex dU0dpk, dU0dek, dU0dvk, dV0dpk, dV0dek, dV0dvk;
-		for(int k = 1; k < 10; k++){
+		for(int k = 1; k < FOURIER_PRINT_NUM; k++){
 			Fp_ss >> re >> im;
 			Fpk = re + 1i*im;
 			

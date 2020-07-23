@@ -533,7 +533,7 @@ void FFT_self_force(double p, double e, fftw_plan *plan, int N, fftw_complex *in
 	double *v = new double[N];
 	
 	// The number of Fourier modes to output
-	int N_out = 10;
+	int N_out = 10; // is this related to the while loop bug with u1 and V1
 	
 	// Output the coordinates in phase space, y = p-2e, e 
 	*Fp_file << p-2*e << " " << e << " ";
@@ -835,7 +835,7 @@ void construct_tilde_Fs(){
 		Ftilde_file  << p << " " << e << " " << Fp1 << " " << Fe1 << " " << fv1 << " " << Fp2 << " " << Fe2 << " " << U1 << " " << V1 << " " << Xv1 << " " << Yp1 << " " << Ye1 << endl;
 	};
 	
-	
+
 	fv_file.close();
 	Fp_file.close();
 	Fe_file.close();
@@ -858,8 +858,8 @@ int osc_eqs (double chi, const double y[], double f[], void *params){
 	f[0] = dp_dchi(p, e, v, Fphi, Fr);
 	f[1] = de_dchi(p, e, v, Fphi, Fr);
 	f[2] = dw_dchi(p, e, v, Fphi, Fr);
-	f[3] = dt_dchi(p, e, v);
-	f[4] = dphi_dchi(p, e, v);	
+	f[3] = dt_dchi(p, e, v); // This is s0 + es1 (different cases for different k's)
+	f[4] = dphi_dchi(p, e, v);	// This is s0 + es1
 	
 	if(p-6-2*e > Y_MIN) return GSL_SUCCESS;
 	else return GSL_SUCCESS + 1;
